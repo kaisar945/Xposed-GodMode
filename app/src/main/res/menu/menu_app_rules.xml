@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/menu_purge_all_rules"
+        android:title="@string/menu_title_purge_all_rules" />
+
+    <item
+        android:id="@+id/menu_export_all_rules"
+        android:title="@string/menu_export_all_rules" />
+
+</menu>
