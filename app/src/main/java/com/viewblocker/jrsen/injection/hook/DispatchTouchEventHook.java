@@ -18,7 +18,7 @@ import android.widget.Toast;
 import com.viewblocker.jrsen.injection.BlockerInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
-import com.viewblocker.jrsen.injection.bridge.LocalInjectBridge;
+import com.viewblocker.jrsen.service.GodModeManagerService;
 import com.viewblocker.jrsen.injection.view.CancelView;
 import com.viewblocker.jrsen.injection.view.MirrorView;
 import com.viewblocker.jrsen.injection.view.ParticleView;
@@ -165,7 +165,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         } else {
             //Make original view gone
             viewRule.visibility = View.GONE;
-            LocalInjectBridge service = LocalInjectBridge.getBridge();
+            GodModeManagerService service = GodModeManagerService.getBridge();
             service.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();

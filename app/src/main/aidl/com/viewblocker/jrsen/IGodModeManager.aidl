@@ -1,17 +1,18 @@
-// InjectBridge.aidl
 package com.viewblocker.jrsen;
 
-import com.viewblocker.jrsen.IClientReceiver;
+import com.viewblocker.jrsen.IObserver;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.analytics.CrashRecord;
 import android.graphics.Bitmap;
 
-interface InjectBridge {
+interface IGodModeManager {
+
+    void setEditMode(boolean enable);
 
     boolean isInEditMode();
 
-    void registerReceiver(String packageName, in IClientReceiver receiver);
+    void addObserver(String packageName, in IObserver observer);
 
     ActRules getRules(String packageName);
 

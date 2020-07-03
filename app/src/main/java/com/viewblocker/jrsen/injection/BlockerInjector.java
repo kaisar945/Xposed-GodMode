@@ -16,11 +16,12 @@ import android.view.ViewGroup;
 
 import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.injection.bridge.ClientReceiver;
-import com.viewblocker.jrsen.injection.bridge.LocalInjectBridge;
+import com.viewblocker.jrsen.service.GodModeManagerService;
 import com.viewblocker.jrsen.injection.hook.ActivityLifecycleHook;
 import com.viewblocker.jrsen.injection.hook.DispatchTouchEventHook;
 import com.viewblocker.jrsen.injection.hook.DisplayProperties;
 import com.viewblocker.jrsen.injection.hook.SystemPropertiesHook;
+import com.viewblocker.jrsen.injection.hook.SystemServerHook;
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.PackageManagerUtils;
 import com.viewblocker.jrsen.injection.util.Property;
@@ -53,13 +54,19 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         }
         Logger.i(TAG, "inject package:" + loadPackageParam.packageName + " isFirstApplication:" + loadPackageParam.isFirstApplication);
         BlockerInjector.loadPackageParam = loadPackageParam;
+        if (TextUtils.equals(loadPackageParam.packageName, "android")) {
+            // 注册系统服务
+            XposedHelpers.findAndHookMethod("com.android.server.SystemServer", loadPackageParam.classLoader, "startOtherServices", new SystemServerHook());
+            return;
+        }
+
         if (BuildConfig.APPLICATION_ID.equals(loadPackageParam.packageName)) {
             //检测上帝模式模块是否开启
             XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
         } else {
             // TODO: 19-11-12 检测宿主应用目录权限
             initHook(loadPackageParam.classLoader);
-            LocalInjectBridge injectBridge = LocalInjectBridge.initialize(loadPackageParam.packageName);
+            GodModeManagerService injectBridge = GodModeManagerService.initialize(loadPackageParam.packageName);
             injectBridge.registerReceiver(loadPackageParam.packageName, new ClientReceiver());
             switchProp.set(injectBridge.isInEditMode());
             actRuleProp.set(injectBridge.getRules(loadPackageParam.packageName));
@@ -67,7 +74,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
     }
 
     private boolean checkWhiteListPackage(String packageName) {
-        if ("android".equals(packageName) || "com.android.systemui".equals(packageName)) {
+        if (TextUtils.equals("com.android.systemui", packageName)) {
             return true;
         }
         try {
