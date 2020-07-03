@@ -5,7 +5,7 @@ android {
     buildToolsVersion '29.0.2'
     defaultConfig {
         applicationId "com.viewblocker.jrsen"
-        minSdkVersion 19
+        minSdkVersion 21
         targetSdkVersion 26
         versionCode 21
         versionName "2.7.10"

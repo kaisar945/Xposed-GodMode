@@ -7,19 +7,12 @@ import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import com.viewblocker.jrsen.IClientReceiver;
-import com.viewblocker.jrsen.InjectBridge;
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.database.ViewRulesTable;
 import com.viewblocker.jrsen.fragment.GeneralPreferenceFragment;
-import com.viewblocker.jrsen.injection.bridge.LocalInjectBridge;
 import com.viewblocker.jrsen.injection.util.FileUtils;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.rule.ViewRule_V274;
-import com.viewblocker.jrsen.rule.ViewRule_V275;
-import com.viewblocker.jrsen.rule.ViewRule_V276;
 import com.viewblocker.jrsen.util.Preconditions;
 
 import org.json.JSONArray;
@@ -69,8 +62,8 @@ public final class InjectBridgeService extends InjectBridge.Stub {
         HOST_BASE_DATA_DIR = aInfo.dataDir;
         FileUtils.setPermissions(HOST_BASE_DATA_DIR, 0757, -1, -1);
 
-        String hostDataDir = LocalInjectBridge.getHostDataDir(HOST_BASE_DATA_DIR);
-        String configFilePath = LocalInjectBridge.getConfigFilePath(HOST_BASE_DATA_DIR);
+        String hostDataDir = GodModeManagerService.getDataDir(HOST_BASE_DATA_DIR);
+        String configFilePath = GodModeManagerService.getConfigFilePath(HOST_BASE_DATA_DIR);
 
         if (!FileUtils.exists(hostDataDir)) {
             FileUtils.mkdirs(hostDataDir, 0777);
@@ -84,10 +77,10 @@ public final class InjectBridgeService extends InjectBridge.Stub {
     }
 
     public boolean fixHostDirPermission() {
-        String hostDataDir = LocalInjectBridge.getHostDataDir(HOST_BASE_DATA_DIR);
+        String hostDataDir = GodModeManagerService.getDataDir(HOST_BASE_DATA_DIR);
         if (FileUtils.exists(hostDataDir))
             FileUtils.setPermissions(hostDataDir, 0777, -1, -1);
-        String configFilePath = LocalInjectBridge.getConfigFilePath(HOST_BASE_DATA_DIR);
+        String configFilePath = GodModeManagerService.getConfigFilePath(HOST_BASE_DATA_DIR);
         if (FileUtils.exists(configFilePath))
             FileUtils.setPermissions(configFilePath, 0774, -1, -1);
         return FileUtils.exists(HOST_BASE_DATA_DIR)
@@ -101,8 +94,8 @@ public final class InjectBridgeService extends InjectBridge.Stub {
         HashMap<String, ActRules> appRules = ViewRulesTable.getAppRules(context);
         Set<String> packageNames = appRules.keySet();
         for (String packageName : packageNames) {
-            String thirdAppDataDir = LocalInjectBridge.getAppHomeDataDir(HOST_BASE_DATA_DIR, packageName);
-            String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppDataDir = GodModeManagerService.getAppHomeDataDir(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
             if (!FileUtils.exists(thirdAppDataDir)
                     && FileUtils.mkdirs(thirdAppDataDir, 0777)
                     && FileUtils.createNewFile(thirdAppRuleFilePath, 0777)) {
@@ -135,7 +128,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
 
     public void setEditModeEnable(boolean enable) {
         try {
-            String configFilePath = LocalInjectBridge.getConfigFilePath(HOST_BASE_DATA_DIR);
+            String configFilePath = GodModeManagerService.getConfigFilePath(HOST_BASE_DATA_DIR);
             String json = FileUtils.readTextFile(configFilePath, 0, null);
             FileOutputStream out = new FileOutputStream(configFilePath);
             try {
@@ -145,7 +138,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
                 } catch (JSONException ignore) {
                     jobject = new JSONObject();
                 }
-                jobject.put(LocalInjectBridge.CONF_GLOBAL_SWITCH, enable);
+                jobject.put(GodModeManagerService.CONF_GLOBAL_SWITCH, enable);
                 out.write(jobject.toString().getBytes());
                 out.flush();
             } finally {
@@ -170,7 +163,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
     @Override
     public ActRules getRules(String packageName) {
         try {
-            String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
             String json = FileUtils.readTextFile(thirdAppRuleFilePath, 0, null);
             return fromJsonCompat(json);
         } catch (Exception ignore) {
@@ -286,7 +279,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
     }
 
     public HashMap<String, ActRules> getAppRules() {
-        String hostDataDir = LocalInjectBridge.getHostDataDir(HOST_BASE_DATA_DIR);
+        String hostDataDir = GodModeManagerService.getDataDir(HOST_BASE_DATA_DIR);
         File dataDir = new File(hostDataDir);
         File[] thirdPackageDirs = dataDir.listFiles(new FileFilter() {
             @Override
@@ -325,15 +318,15 @@ public final class InjectBridgeService extends InjectBridge.Stub {
 
         //save thumbnail
         if (Preconditions.checkBitmap(snapshot)) {
-            String thirdAppDataDir = LocalInjectBridge.getAppHomeDataDir(HOST_BASE_DATA_DIR, packageName);
-            viewRule.snapshotFilePath = LocalInjectBridge.writeBitmapToLocal(snapshot, thirdAppDataDir);
+            String thirdAppDataDir = GodModeManagerService.getAppHomeDataDir(HOST_BASE_DATA_DIR, packageName);
+            viewRule.snapshotFilePath = GodModeManagerService.saveBitmap(snapshot, thirdAppDataDir);
             //规则写到remote则把client的缩略图删了 不然容易OOM
             snapshot.recycle();
         }
 
         try {
             String json = new Gson().toJson(actRules);
-            String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
             FileUtils.stringToFile(thirdAppRuleFilePath, json);
         } catch (IOException e) {
             e.printStackTrace();
@@ -349,7 +342,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
             if (list.isEmpty())
                 rules.remove(viewRule.activityClassName);
             try {
-                String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+                String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
                 FileUtils.stringToFile(thirdAppRuleFilePath, new Gson().toJson(rules));
             } catch (IOException e) {
                 e.printStackTrace();
@@ -365,7 +358,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
             }
         }
         try {
-            String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
             FileUtils.stringToFile(thirdAppRuleFilePath, new JSONArray(Collections.emptyList()).toString());
             return true;
         } catch (IOException e) {
@@ -381,7 +374,7 @@ public final class InjectBridgeService extends InjectBridge.Stub {
         int index = list.indexOf(viewRule);
         list.set(index, viewRule);
         try {
-            String thirdAppRuleFilePath = LocalInjectBridge.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
+            String thirdAppRuleFilePath = GodModeManagerService.getAppRuleFilePath(HOST_BASE_DATA_DIR, packageName);
             FileUtils.stringToFile(thirdAppRuleFilePath, new Gson().toJson(rules));
             return true;
         } catch (IOException e) {

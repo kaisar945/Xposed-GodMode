@@ -45,14 +45,6 @@
             </intent-filter>
         </activity-alias>
 
-        <activity
-            android:name=".FixHostDirPermActivity"
-            android:autoRemoveFromRecents="true"
-            android:exported="true"
-            android:launchMode="singleTask"
-            android:noHistory="true"
-            android:theme="@android:style/Theme.NoDisplay" />
-
         <service
             android:name=".QuickSettingsService"
             android:icon="@drawable/ic_angel_normal"
