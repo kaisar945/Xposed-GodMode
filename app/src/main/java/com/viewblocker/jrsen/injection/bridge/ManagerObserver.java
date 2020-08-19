@@ -14,7 +14,7 @@ import com.viewblocker.jrsen.rule.ActRules;
  * Created by jrsen on 17-10-18.
  */
 
-public final class ClientReceiver extends IObserver.Stub implements Handler.Callback {
+public final class ManagerObserver extends IObserver.Stub implements Handler.Callback {
 
     private final Handler handler = new Handler(Looper.getMainLooper(), this);
     private static final int ACTION_EDIT_MODE_STATE_CHANGED = 0;

@@ -2,7 +2,7 @@ package com.viewblocker.jrsen.preference;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.support.v7.preference.PreferenceViewHolder;
+import androidx.preference.PreferenceViewHolder;
 import android.widget.ImageView;
 
 import com.viewblocker.jrsen.R;
@@ -12,7 +12,7 @@ import com.viewblocker.jrsen.util.Preconditions;
  * Created by jrsen on 17-10-19.
  */
 
-public final class ImagePreviewPreference extends android.support.v7.preference.Preference {
+public final class ImagePreviewPreference extends androidx.preference.Preference {
 
     private Bitmap bitmap;
 

@@ -14,8 +14,16 @@ interface IGodModeManager {
 
     void addObserver(String packageName, in IObserver observer);
 
+    Map getAllRules();
+
     ActRules getRules(String packageName);
 
-    void writeRule(String packageName, in ViewRule viewRule, in Bitmap bitmap);
+    boolean writeRule(String packageName, in ViewRule viewRule, in Bitmap bitmap);
+
+    boolean updateRule(String packageName, in ViewRule viewRule);
+
+    boolean deleteRule(String packageName, in ViewRule viewRule);
+
+    boolean deleteRules(String packageName);
 
 }

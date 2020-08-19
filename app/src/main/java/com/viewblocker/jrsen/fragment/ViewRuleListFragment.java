@@ -10,12 +10,6 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.AsyncTaskLoader;
-import android.support.v4.content.Loader;
-import android.support.v7.preference.Preference;
-import android.support.v7.preference.PreferenceFragmentCompat;
-import android.support.v7.preference.PreferenceScreen;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -24,16 +18,23 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 
-import com.viewblocker.jrsen.BlockerApplication;
+import androidx.annotation.NonNull;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.AsyncTaskLoader;
+import androidx.loader.content.Loader;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceScreen;
+
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.SettingsActivity;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.util.FileUtils;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.service.InjectBridgeService;
 import com.viewblocker.jrsen.util.Preconditions;
-import com.viewblocker.jrsen.util.ViewRuleFactory;
+import com.viewblocker.jrsen.util.QRCodeFactory;
 import com.viewblocker.jrsen.util.ZipUtils;
 import com.viewblocker.jrsen.widget.Snackbar;
 
@@ -44,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -74,19 +76,19 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setHasOptionsMenu(true);
         addPreferencesFromResource(R.xml.pref_empty);
-        getActivity().getSupportLoaderManager().initLoader(1, null, this);
+        LoaderManager.getInstance(this).initLoader(1, null, this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        getActivity().setTitle(R.string.title_app_rule);
+        requireActivity().setTitle(R.string.title_app_rule);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        getActivity().getSupportLoaderManager().destroyLoader(1);
+        LoaderManager.getInstance(this).destroyLoader(1);
     }
 
     @Override
@@ -98,13 +100,13 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
         fragment.setIcon(icon);
         fragment.setLabel(label);
         fragment.setPackageName(packageName);
-        SettingsActivity activity = (SettingsActivity) getActivity();
+        SettingsActivity activity = (SettingsActivity) requireActivity();
         activity.startPreferenceFragment(fragment, true);
         return true;
     }
 
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.menu_app_rules, menu);
     }
@@ -112,12 +114,11 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.menu_purge_all_rules) {
-            InjectBridgeService service = InjectBridgeService.getBridge(BlockerApplication.getApplication());
-            if (service.purgeRulesByPackage(packageName.toString())) {
+            if (GodModeManager.getDefault().deleteRules(packageName.toString())) {
                 getPreferenceScreen().removeAll();
-                getActivity().onBackPressed();
+                requireActivity().onBackPressed();
             } else {
-                Snackbar.make(getActivity(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
+                Snackbar.make(requireActivity(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
             }
         } else if (item.getItemId() == R.id.menu_export_all_rules) {
             new ExportAsyncTask().execute();
@@ -157,8 +158,8 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
         } else {
             preference.setIcon(icon);
         }
-        String activitySimpleName = viewRule.activityClassName != null
-                ? viewRule.activityClassName.substring(viewRule.activityClassName.lastIndexOf('.') + 1) : "Unknown";
+        String activitySimpleName = viewRule.activityClass != null
+                ? viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1) : "Unknown";
         preference.setTitle(getString(R.string.field_activity, activitySimpleName));
         SpannableStringBuilder summaryBuilder = new SpannableStringBuilder();
         if (!TextUtils.isEmpty(viewRule.alias)) {
@@ -166,7 +167,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
             ss.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.alias)), 0, ss.length(), 0);
             summaryBuilder.append(ss);
         }
-        summaryBuilder.append(getString(R.string.field_view, viewRule.viewClassName));
+        summaryBuilder.append(getString(R.string.field_view, viewRule.viewClass));
         preference.setSummary(summaryBuilder);
     }
 
@@ -176,7 +177,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     }
 
     @Override
-    public void onLoadFinished(Loader<List<ViewRule>> loader, List<ViewRule> data) {
+    public void onLoadFinished(@NonNull Loader<List<ViewRule>> loader, List<ViewRule> data) {
         PreferenceScreen preferenceScreen = getPreferenceScreen();
         viewRules.clear();
         preferenceScreen.removeAll();
@@ -192,7 +193,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     }
 
     @Override
-    public void onLoaderReset(Loader<List<ViewRule>> loader) {
+    public void onLoaderReset(@NonNull Loader<List<ViewRule>> loader) {
 
     }
 
@@ -222,8 +223,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
 
         @Override
         public List<ViewRule> loadInBackground() {
-            InjectBridgeService bridge = InjectBridgeService.getBridge(getContext());
-            ActRules actRules = bridge.getRules(packageName);
+            ActRules actRules = GodModeManager.getDefault().getRules(packageName);
             ArrayList<ViewRule> viewRules = new ArrayList<>();
             for (List<ViewRule> values : actRules.values()) {
                 viewRules.addAll(values);
@@ -231,12 +231,12 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
             Collections.sort(viewRules, Collections.reverseOrder(new Comparator<ViewRule>() {
                 @Override
                 public int compare(ViewRule o1, ViewRule o2) {
-                    return Long.compare(o1.recordTimeStamp, o2.recordTimeStamp);
+                    return Long.compare(o1.timestamp, o2.timestamp);
                 }
             }));
             for (ViewRule viewRule : viewRules) {
                 try {
-                    String snapshotFilePath = Preconditions.checkStringNotEmpty(viewRule.snapshotFilePath);
+                    String snapshotFilePath = Preconditions.checkStringNotEmpty(viewRule.imagePath);
                     Bitmap snapshot = BitmapFactory.decodeFile(snapshotFilePath);
                     Bitmap thumbnail = Bitmap.createBitmap(snapshot, viewRule.x, viewRule.y, viewRule.width, viewRule.height);
                     if (thumbnail != snapshot) {
@@ -291,39 +291,35 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
         protected Object[] doInBackground(Void... voids) {
             File godModeDir = Environment.getExternalStoragePublicDirectory("GodMode");
             File cacheDir = new File(godModeDir, ".cache");
-            FileUtils.delete(cacheDir);
-            if (!cacheDir.exists() && cacheDir.mkdirs()) {
+            if (cacheDir.exists() || cacheDir.mkdirs()) {
+                ArrayList<String> filepathlist = new ArrayList<>();
                 final int N = viewRules.size();
-                int exportCount = 0;
                 for (int i = 0; i < N; i++) {
-                    ViewRule viewRule = viewRules.get(i);
-                    Bitmap viewRuleImage = ViewRuleFactory.encodeViewRuleAsQRImage(packageName.toString(), viewRule);
-                    if (viewRuleImage != null) {
-                        try {
-                            FileOutputStream out = new FileOutputStream(new File(cacheDir,
-                                    System.currentTimeMillis() + File.separatorChar + ".webp"));
-                            if (viewRuleImage.compress(Bitmap.CompressFormat.WEBP, 50, out)) {
-                                exportCount++;
+                    try {
+                        ViewRule viewRule = viewRules.get(i);
+                        Bitmap ruleImage = Objects.requireNonNull(QRCodeFactory.encode(viewRule));
+                        File file = new File(cacheDir, System.currentTimeMillis() + ".webp");
+                        try (FileOutputStream out = new FileOutputStream(file)) {
+                            if (!ruleImage.compress(Bitmap.CompressFormat.WEBP, 100, out)) {
+                                return new Object[]{false, null};
                             }
-                            out.close();
-                            viewRuleImage.recycle();
-                        } catch (IOException e) {
+                            filepathlist.add(file.getAbsolutePath());
+                            publishProgress(i + 1);
+                        } finally {
+                            ruleImage.recycle();
                         }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    publishProgress(i + 1);
                 }
                 String zipFile = new File(godModeDir, packageName + ".gm").getAbsolutePath();
                 if (FileUtils.exists(zipFile)) FileUtils.delete(zipFile);
-                File[] files = cacheDir.listFiles();
-                String[] filepaths = new String[files.length];
-                for (int i = 0; i < files.length; i++) {
-                    filepaths[i] = files[i].getAbsolutePath();
-                }
+                String[] filepaths = filepathlist.toArray(new String[0]);
                 boolean successful = ZipUtils.compress(zipFile, filepaths);
                 FileUtils.delete(cacheDir);
-                return new Object[]{successful, exportCount, N - exportCount, zipFile};
+                return new Object[]{successful, zipFile};
             }
-            return null;
+            return new Object[]{false, null};
         }
 
         @Override
@@ -338,11 +334,9 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
             if (mProgressDialog != null && mProgressDialog.isShowing())
                 mProgressDialog.dismiss();
             boolean successful = (boolean) result[0];
-            int exportCount = (int) result[1];
-            int unexportCount = (int) result[2];
-            String filePath = (String) result[3];
-            Snackbar.make(getActivity(), successful
-                    ? getString(R.string.export_successful, exportCount, unexportCount, filePath)
+            String filePath = (String) result[1];
+            Snackbar.make(requireActivity(), successful
+                    ? getString(R.string.export_successful, filePath)
                     : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
         }
     }

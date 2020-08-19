@@ -3,17 +3,23 @@ package com.viewblocker.jrsen.injection;
 import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.TextView;
 
 import com.viewblocker.jrsen.rule.ViewRule;
+import com.viewblocker.jrsen.util.Preconditions;
+
+import java.util.Objects;
 
 import de.robv.android.xposed.XposedHelpers;
 
@@ -23,20 +29,103 @@ import de.robv.android.xposed.XposedHelpers;
 
 public final class ViewHelper {
 
-    @SuppressWarnings("unchecked")
-    public static <V extends View> V findViewById(Activity activity, int id) {
-        return (V) activity.findViewById(id);
+    public static View findViewBestMatch(Activity activity, ViewRule rule) {
+        boolean strictMode = false;
+        try {
+            ClassLoader cl = activity.getClassLoader();
+            Class<?> BuildConfigClass = cl.loadClass(activity.getPackageName() + ".BuildConfig");
+            int versionCode = BuildConfigClass.getField("VERSION_CODE").getInt(null);
+            strictMode = versionCode == rule.versionCode;
+        } catch (Exception ignore) {
+            try {
+                PackageInfo packageInfo = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
+                strictMode = packageInfo.versionCode == rule.versionCode;
+            } catch (PackageManager.NameNotFoundException ignore1) {
+            }
+        }
+        View view;
+        if (!TextUtils.isEmpty(rule.description)) {
+            view = matchView(findViewByDescription(activity.getWindow().getDecorView(), rule.description), rule, strictMode);
+        } else if (!TextUtils.isEmpty(rule.text)) {
+            view = matchView(findViewByText(activity.getWindow().getDecorView(), rule.text), rule, strictMode);
+        } else if (!TextUtils.isEmpty(rule.resourceName)) {
+            view = matchView(activity.findViewById(rule.getViewId(activity.getResources())), rule, strictMode);
+        } else {
+            view = matchView(findViewByDepth(activity, rule.depth), rule, strictMode);
+        }
+        return view;
     }
 
-    @SuppressWarnings("unchecked")
-    public static <V extends View> V findViewByPath(Activity activity, int[] depths) {
-        View targetView = activity.getWindow().getDecorView();
-        for (int depth : depths) {
-            targetView = targetView instanceof ViewGroup
-                    ? ((ViewGroup) targetView).getChildAt(depth) : null;
-            if (targetView == null) break;
+    private static View matchView(View view, ViewRule rule, boolean strictMode) {
+        try {
+            Preconditions.checkNotNull(view, "view can't be null");
+            Preconditions.checkNotNull(rule, "rule can't be null");
+            String resourceName = null;
+            try {
+                resourceName = view.getResources().getResourceName(view.getId());
+            } catch (Resources.NotFoundException ignore) {
+            }
+            String text = view instanceof TextView ? ((TextView) view).getText().toString() : null;
+            CharSequence description = view.getContentDescription();
+            String viewClass = view.getClass().getName();
+            if (strictMode) {
+                return TextUtils.equals(resourceName, rule.resourceName)
+                        && TextUtils.equals(text, rule.text)
+                        && TextUtils.equals(description, rule.description)
+                        && TextUtils.equals(viewClass, rule.viewClass) ? view : null;
+            } else {
+                return ((!TextUtils.isEmpty(rule.resourceName) && TextUtils.equals(resourceName, rule.resourceName))
+                        || (!TextUtils.isEmpty(rule.text) && TextUtils.equals(text, rule.text))
+                        || (!TextUtils.isEmpty(rule.description) && TextUtils.equals(description, rule.description))
+                        || (!TextUtils.isEmpty(rule.viewClass) && TextUtils.equals(viewClass, rule.viewClass))) ? view : null;
+
+            }
+        } catch (Exception ignore) {
+//            ignore.printStackTrace();
         }
-        return (V) targetView;
+        return null;
+    }
+
+    public static View findViewByText(View view, String text) {
+        if (view instanceof TextView && TextUtils.equals(((TextView) view).getText(), text)) {
+            return view;
+        }
+        if (view instanceof ViewGroup) {
+            final int N = ((ViewGroup) view).getChildCount();
+            for (int i = 0; i < N; i++) {
+                View childView = findViewByText(((ViewGroup) view).getChildAt(i), text);
+                if (childView != null) {
+                    return childView;
+                }
+            }
+        }
+        return null;
+    }
+
+    public static View findViewByDescription(View view, String description) {
+        if (TextUtils.equals(view.getContentDescription(), description)) {
+            return view;
+        }
+        if (view instanceof ViewGroup) {
+            final int N = ((ViewGroup) view).getChildCount();
+            for (int i = 0; i < N; i++) {
+                View childView = findViewByDescription(((ViewGroup) view).getChildAt(i), description);
+                if (childView != null) {
+                    return childView;
+                }
+            }
+        }
+        return null;
+    }
+
+    public static View findViewByDepth(Activity activity, int[] depths) {
+        View view = activity.getWindow().getDecorView();
+        for (int depth : depths) {
+            view = view instanceof ViewGroup
+                    ? ((ViewGroup) view).getChildAt(depth) : null;
+            if (view == null) break;
+        }
+        return view;
     }
 
     public static View findTopParentViewByChildView(View v) {
@@ -70,40 +159,34 @@ public final class ViewHelper {
     }
 
     public static ViewRule makeRule(View v) {
-        Activity activity = getAttachedActivityFromView(v);
-        if (activity == null) {
+        try {
+            Activity activity = Objects.requireNonNull(getAttachedActivityFromView(v));
+            int[] out = new int[2];
+            v.getLocationInWindow(out);
+            int x = out[0];
+            int y = out[1];
+            int width = v.getWidth();
+            int height = v.getHeight();
+
+            int[] viewHierarchyDepth = getViewHierarchyDepth(v);
+            String activityClassName = activity.getComponentName().getClassName();
+            String viewClassName = v.getClass().getName();
+            Resources res = v.getContext().getResources();
+            String resourceName = null;
+            try {
+                resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
+            } catch (Resources.NotFoundException ignore) {
+                //可能资源id来自plugin所以找不到
+            }
+            String text = (v instanceof TextView && !TextUtils.isEmpty(((TextView) v).getText())) ? ((TextView) v).getText().toString() : "";
+            String description = (!TextUtils.isEmpty(v.getContentDescription())) ? v.getContentDescription().toString() : "";
+            String alias = !TextUtils.isEmpty(text) ? text : description;
+            String packageName = v.getContext().getPackageName();
+            int versionCode = v.getContext().getPackageManager().getPackageInfo(packageName, 0).versionCode;
+            return new ViewRule(packageName, versionCode, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
+        } catch (Exception e) {
             return null;
         }
-
-        String alias;
-        if (v instanceof TextView) {
-            CharSequence text = ((TextView) v).getText();
-            alias = text != null ? text.toString() : "";
-        } else {
-            CharSequence description = v.getContentDescription();
-            alias = description != null ? description.toString() : "";
-        }
-
-        int[] out = new int[2];
-        v.getLocationInWindow(out);
-
-        int x = out[0];
-        int y = out[1];
-        int width = v.getWidth();
-        int height = v.getHeight();
-
-        int[] viewHierarchyDepth = getViewHierarchyDepth(v);
-        String activityClassName = activity.getComponentName().getClassName();
-        String viewClassName = v.getClass().getName();
-        Resources res = v.getContext().getResources();
-        String resourceName = null;
-        try {
-            resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
-        } catch (Resources.NotFoundException ignore) {
-            //可能资源id来自plugin所以找不到
-        }
-        return new ViewRule("", alias, x, y, width, height, activityClassName, viewClassName
-                , viewHierarchyDepth, resourceName, View.INVISIBLE, System.currentTimeMillis());
     }
 
     public static Bitmap markViewBounds(Bitmap bitmap, int left, int top, int right, int bottom) {

@@ -14,13 +14,14 @@ import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.IBinder;
-import android.preference.PreferenceManager;
-import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
+import androidx.preference.PreferenceManager;
+
 import com.viewblocker.jrsen.fragment.GeneralPreferenceFragment;
-import com.viewblocker.jrsen.service.InjectBridgeService;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 
 /**
  * Created by jrsen on 17-10-26.
@@ -111,8 +112,7 @@ public final class QuickSettingsCompatService extends Service implements SharedP
     private void setEditModeEnable(boolean enable) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         sp.edit().putBoolean("editor_switch", enable).apply();
-        InjectBridgeService bridgeService = InjectBridgeService.getBridge(BlockerApplication.getApplication());
-        bridgeService.setEditModeEnable(enable);
+        GodModeManager.getDefault().setEditMode(enable);
     }
 
     public boolean isEditMode() {

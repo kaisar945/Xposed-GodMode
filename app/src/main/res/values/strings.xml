@@ -54,8 +54,8 @@
     <string name="field_view">控件:%1$s</string>
 
     <string name="dialog_title_export">正在导出%1$s应用规则…</string>
-    <string name="export_successful">导出成功:%1$d条 失败:%2$d条 文件路径:%3$s</string>
-    <string name="export_failed">导出规则失败</string>
+    <string name="export_successful">导出成功,文件路径:%1$s</string>
+    <string name="export_failed">导出失败</string>
 
     <string name="dialog_title_import">正在导入应用规则…</string>
     <string name="import_success">导入规则成功</string>
@@ -68,10 +68,6 @@
     <string name="not_found_xp_installer">噢！ 我的伙计 没有在系统里发现XposedInstaller</string>
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 
-    <string name="dialog_title_xm">兼容性问题</string>
-    <string name="dialog_message_xm">检测到您正在使用小米手机，受SELinux安全策略限制，可能会导致编辑系统应用无法在上帝模式中正常显示，因此每次重启手机后需要重新关闭SELinux安全策略。\n是否授予ROOT权限修复该问题？</string>
-    <string name="dialog_btn_grant">修复</string>
-    <string name="dialog_btn_cancel">取消</string>
     <string name="dialog_loading">噢! 伙计 让我来看看这里有些什么</string>
     <string name="snack_bar_msg_cont_fix_problem">无法修复此问题</string>
     <string name="snack_bar_msg_revert_rule_fail">恢复规则失败</string>

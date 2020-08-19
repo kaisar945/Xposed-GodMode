@@ -8,37 +8,15 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.provider.Settings;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
+import java.util.Objects;
 
-/**
- * Android 6.0 上权限分为<b>正常</b>和<b>危险</b>级别
- * <ul>
- * <li>正常级别权限：开发者仅仅需要在AndroidManifext.xml上声明，那么应用就会被允许拥有该权限，如：android.permission.INTERNET</li>
- * <li>危险级别权限：开发者需要在AndroidManifext.xml上声明，并且在运行时进行申请，而且用户允许了，应用才会被允许拥有该权限，如：android.permission.WRITE_EXTERNAL_STORAGE</li>
- * </ul>
- * 有米的以下权限需要在Android6.0上被允许，有米广告sdk才能正常工作，开发者需要在调用有米的任何代码之前，提前让用户允许权限
- * <ul>
- * <li>必须申请的权限
- * <ul>
- * <li>android.permission.READ_PHONE_STATE</li>
- * <li>android.permission.WRITE_EXTERNAL_STORAGE</li>
- * </ul>
- * </li>
- * <li>可选申请的权限
- * <ul>
- * <li>android.permission.ACCESS_FINE_LOCATION</li>
- * </ul>
- * </li>
- * </ul>
- * Android 6.0+ 权限申请助手
- *
- * @since 2016-01-12
- */
 public class PermissionHelper {
 
     private static final String TAG = "PermissionHelper";
@@ -46,9 +24,6 @@ public class PermissionHelper {
     private final static int REQUEST_PERMISSION_CODE = 1;
     private final static int REQUEST_OPEN_APPLICATION_SETTINGS_CODE = 12345;
 
-    /**
-     * 有米 Android SDK 所需要向用户申请的权限列表
-     */
     private PermissionModel[] mPermissionModels = new PermissionModel[]{
             new PermissionModel("存储空间", Manifest.permission.WRITE_EXTERNAL_STORAGE, "我们需要您允许我们读写你的存储卡，以方便我们临时保存一些数据"),
     };
@@ -64,15 +39,14 @@ public class PermissionHelper {
      * 这里我们演示如何在Android 6.0+上运行时申请权限
      */
     public void applyPermissions() {
-        Activity activity = mActivity.get();
-        if (activity == null) return;
         try {
+            Activity activity = Objects.requireNonNull(mActivity.get());
             ArrayList<String> permissions = new ArrayList<>();
             for (final PermissionModel model : mPermissionModels) {
                 if (PackageManager.PERMISSION_GRANTED != ContextCompat.checkSelfPermission(activity, model.permission))
                     permissions.add(model.permission);
             }
-            ActivityCompat.requestPermissions(activity, permissions.toArray(new String[permissions.size()]), REQUEST_PERMISSION_CODE);
+            ActivityCompat.requestPermissions(activity, permissions.toArray(new String[0]), REQUEST_PERMISSION_CODE);
         } catch (Throwable e) {
             Log.e(TAG, "", e);
         }

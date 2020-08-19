@@ -1,6 +1,6 @@
 package com.viewblocker.jrsen.injection.util;
 
-import android.support.annotation.Keep;
+import androidx.annotation.Keep;
 import android.util.Log;
 
 /**

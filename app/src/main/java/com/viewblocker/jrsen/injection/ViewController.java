@@ -1,12 +1,12 @@
 package com.viewblocker.jrsen.injection;
 
 import android.app.Activity;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
+import com.viewblocker.jrsen.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,24 +25,19 @@ public final class ViewController {
     private static final String LAYOUT_PARAMS_WIDTH = "layout_params_width";
     private static final String LAYOUT_PARAMS_HEIGHT = "layout_params_height";
 
-    public static void applyRule(Activity activity, List<ViewRule> rules) {
-        for (ViewRule viewRule : new ArrayList<>(rules)) {
-            //find view by hierarchy path
-            View view = ViewHelper.findViewByPath(activity, viewRule.viewHierarchyDepth);
-            if (view == null) {
-                //find view by resource id
-                view = ViewHelper.findViewById(activity, viewRule.getViewId(activity.getResources()));
-            }
-            if (view != null && TextUtils.equals(viewRule.viewClassName, view.getClass().getName())) {
+    public static void applyRules(Activity activity, List<ViewRule> rules) {
+        for (ViewRule rule : new ArrayList<>(rules)) {
+            try {
+                View view = Preconditions.checkNotNull(ViewHelper.findViewBestMatch(activity, rule), "can't found block view apply rule failed");
                 Logger.d(TAG, String.format("###block### [Act]:%s  [View]:%s", activity, view));
-                //block view
-                applyRule(view, viewRule);
+                applyRules(view, rule);
+            } catch (NullPointerException ignored) {
+//                ignored.printStackTrace();
             }
-            //Can't found target view pass.
         }
     }
 
-    public static void applyRule(View v, ViewRule viewRule) {
+    public static void applyRules(View v, ViewRule viewRule) {
         saveViewPropertyIfNeeded(v);
         v.setClickable(false);
         v.setAlpha(0f);
@@ -71,20 +66,16 @@ public final class ViewController {
     }
 
     public static void revokeRule(Activity activity, List<ViewRule> rules) {
-        for (ViewRule viewRule : new ArrayList<>(rules)) {
-            //find view by hierarchy path
-            View view = ViewHelper.findViewByPath(activity, viewRule.viewHierarchyDepth);
-            if (view == null) {
-                //find view by resource id
-                view = ViewHelper.findViewById(activity, viewRule.getViewId(activity.getResources()));
-            }
-            if (view != null && TextUtils.equals(viewRule.viewClassName, view.getClass().getName())) {
+        for (ViewRule rule : new ArrayList<>(rules)) {
+            try {
+                View view = Preconditions.checkNotNull(ViewHelper.findViewBestMatch(activity, rule), "can't found block view revoke rule failed");
                 Logger.d(TAG, String.format("###revoke block### [Act]:%s  [View]:%s", activity, view));
                 //revoke block view
-                viewRule.visibility = View.VISIBLE;
-                ViewController.revokeRule(view, viewRule);
+                rule.visibility = View.VISIBLE;
+                ViewController.revokeRule(view, rule);
+            } catch (NullPointerException ignored) {
+//                ignored.printStackTrace();
             }
-            //Can't found target view pass.
         }
     }
 

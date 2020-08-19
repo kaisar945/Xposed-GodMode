@@ -1,11 +1,11 @@
 package com.viewblocker.jrsen.widget;
 
 import android.app.Activity;
-import android.support.annotation.NonNull;
-import android.support.annotation.StringRes;
-import android.support.v4.view.ViewCompat;
-import android.support.v4.view.ViewPropertyAnimatorListenerAdapter;
-import android.support.v4.view.animation.FastOutSlowInInterpolator;
+import androidx.annotation.NonNull;
+import androidx.annotation.StringRes;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.ViewPropertyAnimatorListenerAdapter;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;

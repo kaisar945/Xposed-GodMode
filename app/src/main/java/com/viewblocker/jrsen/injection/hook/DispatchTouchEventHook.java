@@ -18,7 +18,7 @@ import android.widget.Toast;
 import com.viewblocker.jrsen.injection.BlockerInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
-import com.viewblocker.jrsen.service.GodModeManagerService;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.view.CancelView;
 import com.viewblocker.jrsen.injection.view.MirrorView;
 import com.viewblocker.jrsen.injection.view.ParticleView;
@@ -51,11 +51,12 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
-        if (BlockerInjector.switchProp.get())
-            param.setResult(onTouch((View) param.thisObject, (MotionEvent) param.args[0]));
+        if (BlockerInjector.switchProp.get()) {
+            param.setResult(dispatchTouchEvent((View) param.thisObject, (MotionEvent) param.args[0]));
+        }
     }
 
-    private boolean onTouch(View v, MotionEvent event) {
+    private boolean dispatchTouchEvent(View v, MotionEvent event) {
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
             if (multiPointLock) {
@@ -134,7 +135,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         ViewHelper.markViewBounds(snapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
 
         //Make original view invisible
-        ViewController.applyRule(v, viewRule);
+        ViewController.applyRules(v, viewRule);
     }
 
     private void performDetachMirrorView(final View v) {
@@ -165,8 +166,14 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         } else {
             //Make original view gone
             viewRule.visibility = View.GONE;
-            GodModeManagerService service = GodModeManagerService.getBridge();
-            service.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
+            try {
+                GodModeManager manager = GodModeManager.getDefault();
+                manager.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
+            } finally {
+                if (Preconditions.checkBitmap(snapshot)) {
+                    snapshot.recycle();
+                }
+            }
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
             final ParticleView particleView = new ParticleView(activity, 1000);
@@ -183,7 +190,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                         mirrorView.detachFromContainer();
                         particleView.detachFromContainer();
                         //应用规则
-                        ViewController.applyRule(v, viewRule);
+                        ViewController.applyRules(v, viewRule);
                     } finally {
                         mirrorView = null;
                         cancelView = null;

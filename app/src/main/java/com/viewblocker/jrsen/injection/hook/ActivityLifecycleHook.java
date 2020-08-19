@@ -11,8 +11,9 @@ import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 
 import java.lang.ref.SoftReference;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -47,53 +48,44 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
     private ActRules actRules = new ActRules();
 
     @Override
-    public void onPropertyChange(ActRules actRules) {
-        ActRules legacyActRules = new ActRules();
-        Set<String> keySet = this.actRules.keySet();
-        for (String key : keySet) {
-            if (actRules.containsKey(key)) {
-                List<ViewRule> legacyRuleList = new ArrayList<>(this.actRules.get(key));
-                legacyRuleList.removeAll(actRules.get(key));
-                legacyActRules.put(key, legacyRuleList);
-            } else {
-                legacyActRules.put(key, this.actRules.get(key));
+    public void onPropertyChange(ActRules newActRules) {
+        Set<Map.Entry<String, List<ViewRule>>> entrySet = newActRules.entrySet();
+        for (Map.Entry<String, List<ViewRule>> entry : entrySet) {
+            try {
+                List<ViewRule> viewRules = actRules.get(entry.getKey());
+                Objects.requireNonNull(viewRules).removeAll(entry.getValue());
+            } catch (Exception e) {
+//                e.printStackTrace();
             }
         }
-        this.actRules = actRules;
-        revokeRuleForActivity(legacyActRules);
+        revokeRuleForActivity(actRules);
+        actRules.clear();
+        actRules.putAll(newActRules);
         applyRuleForActivity(actRules);
     }
 
-    private void revokeRuleForActivity(ActRules legacyActRules) {
-        if (legacyActRules == null || legacyActRules.isEmpty()) {
-            return;
-        }
-        for (int i = 0; i < sActivities.size(); i++) {
-            SoftReference<Activity> activitySoftReference = sActivities.valueAt(i);
-            Activity activity = activitySoftReference.get();
-            if (activity != null) {
-                if (legacyActRules.containsKey(activity.getComponentName().getClassName())) {
-                    ViewController.revokeRule(activity, legacyActRules.getRuleList(activity));
-                }
-            } else {
-                sActivities.removeAt(i--);
+    private void revokeRuleForActivity(ActRules actRules) {
+        final int N = sActivities.size();
+        for (int i = 0; i < N; i++) {
+            try {
+                Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
+                List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
+                ViewController.revokeRule(activity, viewRules);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
 
     private void applyRuleForActivity(ActRules actRules) {
-        if (actRules == null || actRules.isEmpty()) {
-            return;
-        }
-        for (int i = 0; i < sActivities.size(); i++) {
-            SoftReference<Activity> activitySoftReference = sActivities.valueAt(i);
-            Activity activity = activitySoftReference.get();
-            if (activity != null) {
-                if (actRules.containsKey(activity.getComponentName().getClassName())) {
-                    ViewController.applyRule(activity, actRules.getRuleList(activity));
-                }
-            } else {
-                sActivities.removeAt(i--);
+        final int N = sActivities.size();
+        for (int i = 0; i < N; i++) {
+            try {
+                Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
+                List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
+                ViewController.applyRules(activity, viewRules);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
     }
