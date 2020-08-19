@@ -35,6 +35,10 @@ import java.util.Map;
 import java.util.Objects;
 
 import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXG;
+import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXO;
+import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXU;
+
 
 /**
  * Created by jrsen on 17-10-15.
@@ -356,6 +360,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             File file = new File(dir, System.currentTimeMillis() + ".webp");
             try (FileOutputStream out = new FileOutputStream(file)) {
                 if (bitmap.compress(Bitmap.CompressFormat.WEBP, 80, out)) {
+                    FileUtils.setPermissions(file, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
                     return file.getAbsolutePath();
                 }
                 throw new FileNotFoundException("bitmap can't compress to " + file.getAbsolutePath());
@@ -396,6 +401,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private String getBaseDir() throws FileNotFoundException {
         File dir = new File(BASE_DIR);
         if (dir.exists() || dir.mkdirs()) {
+            FileUtils.setPermissions(dir, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
             return dir.getAbsolutePath();
         }
         throw new FileNotFoundException();
@@ -404,6 +410,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private String getConfigFilePath() throws IOException {
         File file = new File(getBaseDir(), CONFIG_FILE_NAME);
         if (file.exists() || file.createNewFile()) {
+            FileUtils.setPermissions(file, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
             return file.getAbsolutePath();
         }
         throw new FileNotFoundException();
@@ -412,6 +419,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private String getAppDataDir(String packageName) throws FileNotFoundException {
         File dir = new File(getBaseDir(), packageName);
         if (dir.exists() || dir.mkdirs()) {
+            FileUtils.setPermissions(dir, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
             return dir.getAbsolutePath();
         }
         throw new FileNotFoundException();
@@ -420,6 +428,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private String getAppRuleFilePath(String packageName) throws IOException {
         File file = new File(getAppDataDir(packageName), packageName + RULE_FILE_SUFFIX);
         if (file.exists() || file.createNewFile()) {
+            FileUtils.setPermissions(file, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
             return file.getAbsolutePath();
         }
         throw new FileNotFoundException();
