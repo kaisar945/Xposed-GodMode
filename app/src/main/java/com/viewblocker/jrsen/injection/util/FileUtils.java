@@ -96,20 +96,17 @@ public final class FileUtils {
     }
 
     public static boolean delete(File file) {
-        int successful = -1;
-        try {
-            successful = Runtime.getRuntime().exec("rm -rf " + file.getAbsolutePath()).waitFor();
-        } catch (InterruptedException | IOException ignore) {
-        }
-        if (successful != 0) {
-            if (file.isDirectory()) {
-                for (File subFile : file.listFiles()) {
-                    delete(subFile);
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File childFile : files) {
+                    if (!delete(childFile)) {
+                        return false;
+                    }
                 }
             }
-            return file.delete();
         }
-        return true;
+        return file.delete();
     }
 
     public static boolean writeFile(InputStream in, File file) {

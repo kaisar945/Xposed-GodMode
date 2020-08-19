@@ -17,35 +17,34 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.AsyncTaskLoader;
-import android.support.v4.content.Loader;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.preference.CheckBoxPreference;
-import android.support.v7.preference.Preference;
-import android.support.v7.preference.PreferenceCategory;
-import android.support.v7.preference.PreferenceFragmentCompat;
-import android.support.v7.preference.PreferenceManager;
-import android.support.v7.preference.SwitchPreferenceCompat;
 import android.text.TextUtils;
-import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 
-import com.viewblocker.jrsen.BlockerApplication;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.AsyncTaskLoader;
+import androidx.loader.content.Loader;
+import androidx.preference.CheckBoxPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceManager;
+import androidx.preference.SwitchPreferenceCompat;
+
 import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.QuickSettingsCompatService;
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.SettingsActivity;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.util.FileUtils;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.service.InjectBridgeService;
 import com.viewblocker.jrsen.util.DonateHelper;
-import com.viewblocker.jrsen.util.Preconditions;
-import com.viewblocker.jrsen.util.ViewRuleFactory;
+import com.viewblocker.jrsen.util.QRCodeFactory;
 import com.viewblocker.jrsen.util.XposedEnvironment;
 import com.viewblocker.jrsen.util.ZipUtils;
 import com.viewblocker.jrsen.widget.Snackbar;
@@ -55,6 +54,7 @@ import java.io.FileNotFoundException;
 import java.io.FilenameFilter;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.Objects;
 
 
 /**
@@ -95,7 +95,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         PreferenceManager.getDefaultSharedPreferences(
                 mEditorSwitchPreference.getContext()).registerOnSharedPreferenceChangeListener(this);
 
-        SharedPreferences sp = getActivity().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences sp = requireActivity().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
         int previousVersionCode = sp.getInt(KEY_VERSION_CODE, 0);
         if (previousVersionCode != BuildConfig.VERSION_CODE) {
             showUpdatePolicyDialog();
@@ -103,14 +103,14 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else if (!XposedEnvironment.isModuleActive(getContext())) {
             requestEnableModuleDialog();
         }
-        getActivity().getSupportLoaderManager().initLoader(0, null, this);
+        LoaderManager.getInstance(this).initLoader(0, null, this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        getActivity().setTitle(R.string.app_name);
-        getActivity().getSupportLoaderManager().getLoader(0).onContentChanged();
+        requireActivity().setTitle(R.string.app_name);
+        LoaderManager.getInstance(this).getLoader(0).onContentChanged();
     }
 
     @Override
@@ -119,33 +119,35 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     @Override
-    public void onLoadFinished(Loader<HashMap<String, ActRules>> loader, HashMap<String, ActRules> rules) {
+    public void onLoadFinished(@NonNull Loader<HashMap<String, ActRules>> loader, HashMap<String, ActRules> rules) {
         PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
         category.removeAll();
-        PackageManager pm = getContext().getPackageManager();
-        for (String packageName : rules.keySet()) {
-            Drawable icon;
-            CharSequence label;
-            try {
-                ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
-                icon = aInfo.loadIcon(pm);
-                label = aInfo.loadLabel(pm);
-            } catch (PackageManager.NameNotFoundException ignore) {
-                icon = getResources().getDrawable(R.mipmap.ic_god);
-                label = packageName;
+        if (rules != null) {
+            PackageManager pm = requireContext().getPackageManager();
+            for (String packageName : rules.keySet()) {
+                Drawable icon;
+                CharSequence label;
+                try {
+                    ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
+                    icon = aInfo.loadIcon(pm);
+                    label = aInfo.loadLabel(pm);
+                } catch (PackageManager.NameNotFoundException ignore) {
+                    icon = getResources().getDrawable(R.mipmap.ic_god);
+                    label = packageName;
+                }
+                Preference preference = new Preference(category.getContext());
+                preference.setIcon(icon);
+                preference.setTitle(label);
+                preference.setSummary(packageName);
+                preference.setKey(packageName);
+                preference.setOnPreferenceClickListener(this);
+                category.addPreference(preference);
             }
-            Preference preference = new Preference(category.getContext());
-            preference.setIcon(icon);
-            preference.setTitle(label);
-            preference.setSummary(packageName);
-            preference.setKey(packageName);
-            preference.setOnPreferenceClickListener(this);
-            category.addPreference(preference);
         }
     }
 
     @Override
-    public void onLoaderReset(Loader<HashMap<String, ActRules>> loader) {
+    public void onLoaderReset(@NonNull Loader<HashMap<String, ActRules>> loader) {
     }
 
     private static final class DataLoader extends AsyncTaskLoader<HashMap<String, ActRules>> {
@@ -156,8 +158,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
         @Override
         public HashMap<String, ActRules> loadInBackground() {
-            InjectBridgeService service = InjectBridgeService.getBridge(getContext());
-            return service.getAppRules();
+            return (HashMap<String, ActRules>) GodModeManager.getDefault().getAllRules();
         }
     }
 
@@ -166,24 +167,22 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(
                 mEditorSwitchPreference.getContext()).unregisterOnSharedPreferenceChangeListener(this);
-        getActivity().getSupportLoaderManager().destroyLoader(0);
+        LoaderManager.getInstance(this).destroyLoader(0);
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (mEditorSwitchPreference == preference) {
             boolean enable = (boolean) newValue;
-            InjectBridgeService injectBridge = InjectBridgeService.getBridge(BlockerApplication.getApplication());
-            injectBridge.setEditModeEnable(enable);
+            GodModeManager.getDefault().setEditMode(enable);
 //            Snackbar.make(getActivity(), R.string.toast_tip_force_stop, Snackbar.LENGTH_LONG).show();
         } else if (mQuickSettingPreference == preference) {
             boolean enable = (boolean) newValue;
             QuickSettingsCompatService.setComponentState(preference.getContext(), enable);
+            Intent intent = new Intent(preference.getContext(), QuickSettingsCompatService.class);
             if (enable) {
-                Intent intent = new Intent(preference.getContext(), QuickSettingsCompatService.class);
                 preference.getContext().startService(intent);
             } else {
-                Intent intent = new Intent(preference.getContext(), QuickSettingsCompatService.class);
                 preference.getContext().stopService(intent);
             }
         }
@@ -201,26 +200,26 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             fragment.setIcon(preference.getIcon());
             fragment.setLabel(preference.getTitle());
             fragment.setPackageName(preference.getSummary());
-            SettingsActivity activity = (SettingsActivity) getActivity();
+            SettingsActivity activity = (SettingsActivity) requireActivity();
             activity.startPreferenceFragment(fragment, true);
         }
         return true;
     }
 
     private void requestEnableModuleDialog() {
-        new AlertDialog.Builder(getActivity())
+        new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.hey_guy)
                 .setMessage(R.string.not_active_module)
                 .setPositiveButton(android.R.string.ok, null)
                 .setNegativeButton(R.string.go_setting, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(getContext());
+                        XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
                         if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
                             Intent launchIntent = getActivity().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
                             startActivity(launchIntent);
                         } else {
-                            Snackbar.make(getActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
+                            Snackbar.make(requireActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
                         }
                     }
                 })
@@ -228,7 +227,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     private void showUpdatePolicyDialog() {
-        final AlertDialog dialog = new AlertDialog.Builder(getActivity())
+        final AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.welcome_title)
                 .setMessage("\t我想你可以试试用上帝模式屏蔽一些令人烦恼的按钮。噢！没错这听起来很有趣。不过这个小家伙有时会像汤姆家那只该死的倔驴一样不听话，别担心伙计们，我会尽快修理好的！\n\n" +
                         "\t伙计们玩的开心记得支持一下你们的老伙计 非常感谢！" +
@@ -257,7 +256,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     private void showJoinGroupDialog() {
-        new AlertDialog.Builder(getActivity())
+        new AlertDialog.Builder(requireContext())
                 .setItems(R.array.qq_groups_name, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
@@ -286,7 +285,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.menu_general, menu);
         MenuItem item = menu.findItem(R.id.menu_icon_switch);
-        Context context = getActivity();
+        Context context = requireContext();
         PackageManager pm = context.getPackageManager();
         ComponentName cmp = new ComponentName(context.getPackageName(), "com.viewblocker.jrsen.SettingsAliasActivity");
         boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
@@ -301,7 +300,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             startActivityForResult(intent, REQUEST_PICK_FILE);
         } else if (item.getItemId() == R.id.menu_icon_switch) {
-            Context context = getActivity();
+            Context context = requireContext();
             PackageManager pm = context.getPackageManager();
             ComponentName cmp = new ComponentName(context.getPackageName(), "com.viewblocker.jrsen.SettingsAliasActivity");
             boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
@@ -335,7 +334,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else if (fileName.endsWith(".gm")) {
             handleImportViewRule(uri, true);
         } else {
-            Snackbar.make(getActivity(), R.string.import_failed, Snackbar.LENGTH_SHORT).show();
+            Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_SHORT).show();
         }
     }
 
@@ -442,11 +441,19 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
         private boolean processImportViewRule(Uri imgUri) {
             try {
-                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), imgUri);
-                Pair<String, ViewRule> viewRulePair = Preconditions.checkNotNull(ViewRuleFactory.decodeViewRuleFromQRImage(bitmap));
-                InjectBridgeService injectBridge = InjectBridgeService.getBridge(BlockerApplication.getApplication());
-                injectBridge.writeRule(viewRulePair.first, viewRulePair.second, bitmap);
-                return true;
+                Bitmap fullImage = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), imgUri);
+                Bitmap splitImage = null;
+                try {
+                    Object[] array = Objects.requireNonNull(QRCodeFactory.decode(fullImage));
+                    ViewRule viewRule = (ViewRule) array[0];
+                    splitImage = (Bitmap) array[1];
+                    GodModeManager.getDefault().writeRule(viewRule.packageName, viewRule, splitImage);
+                    return true;
+                } finally {
+                    fullImage.recycle();
+                    if (splitImage != null)
+                        splitImage.recycle();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 return false;

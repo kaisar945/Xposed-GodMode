@@ -6,7 +6,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.Keep;
+import androidx.annotation.Keep;
 
 /**
  * Created by jrsen on 17-11-22.

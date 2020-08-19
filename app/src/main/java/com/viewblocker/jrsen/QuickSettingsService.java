@@ -10,7 +10,7 @@ import android.service.quicksettings.TileService;
 import android.text.TextUtils;
 
 import com.viewblocker.jrsen.fragment.GeneralPreferenceFragment;
-import com.viewblocker.jrsen.service.InjectBridgeService;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 
 /**
  * Created by jrsen on 17-10-26.
@@ -59,8 +59,7 @@ public final class QuickSettingsService extends TileService implements SharedPre
     private void setEditModeEnable(boolean enable) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         sp.edit().putBoolean("editor_switch", enable).apply();
-        InjectBridgeService bridgeService = InjectBridgeService.getBridge(BlockerApplication.getApplication());
-        bridgeService.setEditModeEnable(enable);
+        GodModeManager.getDefault().setEditMode(enable);
     }
 
     public boolean isEditMode() {

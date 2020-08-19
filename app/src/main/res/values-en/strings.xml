@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GodMode</string>
+    <string name="action_import_view_rule">ImportRule</string>
+    <string name="pref_header_general">General</string>
+    <string name="pref_header_support">Support</string>
+    <string name="pref_header_app_rules">Rules</string>
+    <string name="pref_title_god_mode">GodMode</string>
+    <string name="snack_bar_msg_revert_rule_fail">restore failed</string>
+    <string name="snack_bar_msg_cont_fix_problem">can\'t fix this problem</string>
+    <string name="pref_title_donate_me">Donate Me</string>
+    <string name="pref_title_add_group">Join Group</string>
+    <string name="pref_title_quick_setting">Enable Quick Setting</string>
+    <string name="pref_description_quick_setting">Support Android7+ Tiles</string>
+    <string name="pref_description_donate_me">Thank you</string>
+    <string name="menu_share">Share with</string>
+    <string name="dialog_btn_alipay">Alipay</string>
+    <string name="dialog_btn_wxpay">WechatPay</string>
+</resources>

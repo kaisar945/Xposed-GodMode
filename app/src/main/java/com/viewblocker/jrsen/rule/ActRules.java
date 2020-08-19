@@ -1,11 +1,10 @@
 package com.viewblocker.jrsen.rule;
 
-import android.app.Activity;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.Keep;
 
-import java.util.ArrayList;
+import androidx.annotation.Keep;
+
 import java.util.HashMap;
 import java.util.List;
 
@@ -44,10 +43,5 @@ public final class ActRules extends HashMap<String, List<ViewRule>> implements P
             return new ActRules[size];
         }
     };
-
-    public List<ViewRule> getRuleList(Activity activity) {
-        String key = activity.getComponentName().getClassName();
-        return containsKey(key) ? get(key) : new ArrayList<ViewRule>();
-    }
 
 }

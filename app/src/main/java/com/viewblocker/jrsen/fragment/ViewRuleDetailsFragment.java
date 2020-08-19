@@ -6,19 +6,19 @@ import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.support.v7.preference.EditTextPreference;
-import android.support.v7.preference.ListPreference;
-import android.support.v7.preference.Preference;
-import android.support.v7.preference.PreferenceFragmentCompat;
 import android.text.TextUtils;
 import android.view.View;
 
-import com.viewblocker.jrsen.BlockerApplication;
+import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
+
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.preference.ImagePreviewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.service.InjectBridgeService;
 import com.viewblocker.jrsen.util.Preconditions;
 
 import java.util.Arrays;
@@ -67,7 +67,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.xml.pref_empty);
-        android.support.v7.preference.PreferenceScreen preferenceScreen = getPreferenceScreen();
+        androidx.preference.PreferenceScreen preferenceScreen = getPreferenceScreen();
         Context context = preferenceScreen.getContext();
         Preference headerPreference = new Preference(context);
         headerPreference.setSelectable(false);
@@ -77,7 +77,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
-        preference.setSummary("活动:" + (viewRule.activityClassName != null ? viewRule.activityClassName : "Unknown"));
+        preference.setSummary("活动:" + (viewRule.activityClass != null ? viewRule.activityClass : "Unknown"));
         preferenceScreen.addPreference(preference);
 
         preference = new EditTextPreference(context);
@@ -99,11 +99,11 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setSummary("控件类型:" + viewRule.viewClassName);
+        preference.setSummary("控件类型:" + viewRule.viewClass);
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setSummary("控件布局深度:" + Arrays.toString(viewRule.viewHierarchyDepth));
+        preference.setSummary("控件布局深度:" + Arrays.toString(viewRule.depth));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
@@ -122,14 +122,14 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         listPreference.setSummary("控件可见性:" + (viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
         preferenceScreen.addPreference(preference);
 
-        boolean hasSnapshot = !TextUtils.isEmpty(viewRule.snapshotFilePath);
+        boolean hasSnapshot = !TextUtils.isEmpty(viewRule.imagePath);
         preference = new Preference(context);
         preference.setSummary(hasSnapshot ? "控件预览:" : "该控件没有预览图");
         preferenceScreen.addPreference(preference);
 
         if (hasSnapshot) {
             preference = new ImagePreviewPreference(context);
-            snapshot = BitmapFactory.decodeFile(viewRule.snapshotFilePath);
+            snapshot = BitmapFactory.decodeFile(viewRule.imagePath);
             preference.setDefaultValue(snapshot);
             preferenceScreen.addPreference(preference);
         }
@@ -138,7 +138,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @Override
     public void onResume() {
         super.onResume();
-        getActivity().setTitle(R.string.title_rule_details);
+        requireActivity().setTitle(R.string.title_rule_details);
     }
 
     @Override
@@ -153,19 +153,19 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         String s = preference.getKey();
-        InjectBridgeService service = InjectBridgeService.getBridge(BlockerApplication.getApplication());
+        GodModeManager manager = GodModeManager.getDefault();
         if (KEY_ALIAS.equals(s)) {
             preference.setSummary("控件别名:" + newValue);
             viewRule.alias = (String) newValue;
-            service.update(preference.getContext(), packageName.toString(), viewRule);
+            manager.updateRule(packageName.toString(), viewRule);
             dataObserver.onItemChanged(index);
             return false;
         } else if (KEY_VISIBILITY.equals(s)) {
             ListPreference listPreference = (ListPreference) preference;
             CharSequence[] entries = listPreference.getEntries();
             int origVisibility = viewRule.visibility;
-            viewRule.visibility = Integer.valueOf((String) newValue);
-            if (!service.update(preference.getContext(), packageName.toString(), viewRule)) {
+            viewRule.visibility = Integer.parseInt((String) newValue);
+            if (!manager.updateRule(packageName.toString(), viewRule)) {
                 viewRule.visibility = origVisibility;
             }
             listPreference.setValue(String.valueOf(viewRule.visibility));

@@ -2,6 +2,7 @@ package com.viewblocker.jrsen.injection.view;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -9,6 +10,8 @@ import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import androidx.annotation.Nullable;
+import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -32,6 +35,21 @@ public final class MirrorView extends View {
         this.drawable = drawable;
     }
 
+    public MirrorView(Context context, @Nullable AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
+
+    public MirrorView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        this(context, attrs, defStyleAttr, 0);
+    }
+
+    public MirrorView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        TypedArray a = context.obtainStyledAttributes(attrs, new int[]{android.R.attr.background}, defStyleAttr, defStyleRes);
+        this.drawable = a.getDrawable(0);
+        a.recycle();
+    }
+
     public void updatePosition(int newX, int newY) {
         x = newX;
         y = newY;
@@ -53,12 +71,13 @@ public final class MirrorView extends View {
     }
 
     public void setMarked(boolean enable) {
-        isMarked = enable;
-        if (enable) {
-            int color = Color.argb(150, 139, 195, 75);
-            drawable.setColorFilter(color, PorterDuff.Mode.SRC_ATOP);
-        } else {
-            drawable.clearColorFilter();
+        if (isMarked != enable) {
+            if (isMarked = enable) {
+                int color = Color.argb(150, 139, 195, 75);
+                drawable.setColorFilter(color, PorterDuff.Mode.SRC_ATOP);
+            } else {
+                drawable.clearColorFilter();
+            }
         }
     }
 

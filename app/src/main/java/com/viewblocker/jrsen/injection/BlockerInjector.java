@@ -9,23 +9,25 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Build;
+import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.viewblocker.jrsen.BuildConfig;
-import com.viewblocker.jrsen.injection.bridge.ClientReceiver;
-import com.viewblocker.jrsen.service.GodModeManagerService;
+import com.viewblocker.jrsen.injection.bridge.GodModeManager;
+import com.viewblocker.jrsen.injection.bridge.ManagerObserver;
 import com.viewblocker.jrsen.injection.hook.ActivityLifecycleHook;
 import com.viewblocker.jrsen.injection.hook.DispatchTouchEventHook;
 import com.viewblocker.jrsen.injection.hook.DisplayProperties;
 import com.viewblocker.jrsen.injection.hook.SystemPropertiesHook;
-import com.viewblocker.jrsen.injection.hook.SystemServerHook;
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.PackageManagerUtils;
 import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.rule.ActRules;
+import com.viewblocker.jrsen.service.GodModeManagerService;
+import com.viewblocker.jrsen.service.XServiceManager;
 
 import java.util.List;
 
@@ -49,31 +51,45 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) {
-        if (!loadPackageParam.isFirstApplication || checkWhiteListPackage(loadPackageParam.packageName)) {
+        if (!loadPackageParam.isFirstApplication) {
             return;
         }
-        Logger.i(TAG, "inject package:" + loadPackageParam.packageName + " isFirstApplication:" + loadPackageParam.isFirstApplication);
         BlockerInjector.loadPackageParam = loadPackageParam;
-        if (TextUtils.equals(loadPackageParam.packageName, "android")) {
-            // 注册系统服务
-            XposedHelpers.findAndHookMethod("com.android.server.SystemServer", loadPackageParam.classLoader, "startOtherServices", new SystemServerHook());
-            return;
-        }
-
-        if (BuildConfig.APPLICATION_ID.equals(loadPackageParam.packageName)) {
-            //检测上帝模式模块是否开启
-            XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
-        } else {
-            // TODO: 19-11-12 检测宿主应用目录权限
-            initHook(loadPackageParam.classLoader);
-            GodModeManagerService injectBridge = GodModeManagerService.initialize(loadPackageParam.packageName);
-            injectBridge.registerReceiver(loadPackageParam.packageName, new ClientReceiver());
-            switchProp.set(injectBridge.isInEditMode());
-            actRuleProp.set(injectBridge.getRules(loadPackageParam.packageName));
+        final String packageName = loadPackageParam.packageName;
+        switch (packageName) {
+            case "android": {
+                // 注册系统服务
+                Logger.i(TAG, "inject GodModeManagerService as system service.");
+                XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<IBinder>() {
+                    @Override
+                    public IBinder createService(Context ctx) {
+                        return new GodModeManagerService();
+                    }
+                });
+                XServiceManager.initManager();
+            }
+            break;
+            case BuildConfig.APPLICATION_ID: {
+                //检测上帝模式模块是否开启
+                XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
+            }
+            break;
+            default: {
+                if (checkBlockList(loadPackageParam.packageName)) {
+                    Logger.i(TAG, String.format("%s in block list.", loadPackageParam.packageName));
+                    return;
+                }
+                initHook(loadPackageParam.classLoader);
+                GodModeManager manager = GodModeManager.getDefault();
+                manager.addObserver(loadPackageParam.packageName, new ManagerObserver());
+                switchProp.set(manager.isInEditMode());
+                actRuleProp.set(manager.getRules(loadPackageParam.packageName));
+            }
+            break;
         }
     }
 
-    private boolean checkWhiteListPackage(String packageName) {
+    private boolean checkBlockList(String packageName) {
         if (TextUtils.equals("com.android.systemui", packageName)) {
             return true;
         }
