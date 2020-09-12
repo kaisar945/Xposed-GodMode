@@ -25,19 +25,21 @@ public final class ViewController {
     private static final String LAYOUT_PARAMS_WIDTH = "layout_params_width";
     private static final String LAYOUT_PARAMS_HEIGHT = "layout_params_height";
 
-    public static void applyRules(Activity activity, List<ViewRule> rules) {
+    public static void applyRuleBatch(Activity activity, List<ViewRule> rules) {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
-                View view = Preconditions.checkNotNull(ViewHelper.findViewBestMatch(activity, rule), "can't found block view apply rule failed");
-                Logger.d(TAG, String.format("###block### [Act]:%s  [View]:%s", activity, view));
-                applyRules(view, rule);
-            } catch (NullPointerException ignored) {
-//                ignored.printStackTrace();
+                Logger.d(TAG, "apply rule:" + rule.toString());
+                View view = ViewHelper.findViewBestMatch(activity, rule);
+                Preconditions.checkNotNull(view, "can't found view by rule apply failed");
+                Logger.i(TAG, String.format("###block success [Act]:%s  [View]:%s", activity, view));
+                applyRule(view, rule);
+            } catch (NullPointerException e) {
+                Logger.w(TAG, String.format("###block failed [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
             }
         }
     }
 
-    public static void applyRules(View v, ViewRule viewRule) {
+    public static void applyRule(View v, ViewRule viewRule) {
         saveViewPropertyIfNeeded(v);
         v.setClickable(false);
         v.setAlpha(0f);
@@ -65,16 +67,18 @@ public final class ViewController {
         }
     }
 
-    public static void revokeRule(Activity activity, List<ViewRule> rules) {
+    public static void revokeRuleBatch(Activity activity, List<ViewRule> rules) {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
-                View view = Preconditions.checkNotNull(ViewHelper.findViewBestMatch(activity, rule), "can't found block view revoke rule failed");
-                Logger.d(TAG, String.format("###revoke block### [Act]:%s  [View]:%s", activity, view));
+                Logger.d(TAG, "revoke rule:" + rule.toString());
+                View view = ViewHelper.findViewBestMatch(activity, rule);
+                Preconditions.checkNotNull(view, "can't found block view revoke rule failed");
+                Logger.i(TAG, String.format("###revoke success [Act]:%s  [View]:%s", activity, view));
                 //revoke block view
                 rule.visibility = View.VISIBLE;
                 ViewController.revokeRule(view, rule);
-            } catch (NullPointerException ignored) {
-//                ignored.printStackTrace();
+            } catch (NullPointerException e) {
+                Logger.w(TAG, String.format("###revoke failed [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
             }
         }
     }

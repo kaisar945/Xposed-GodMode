@@ -12,11 +12,11 @@ import com.viewblocker.jrsen.util.Preconditions;
  * Created by jrsen on 17-10-19.
  */
 
-public final class ImagePreviewPreference extends androidx.preference.Preference {
+public final class ImageViewPreference extends androidx.preference.Preference {
 
     private Bitmap bitmap;
 
-    public ImagePreviewPreference(Context context) {
+    public ImageViewPreference(Context context) {
         super(context);
         init();
     }

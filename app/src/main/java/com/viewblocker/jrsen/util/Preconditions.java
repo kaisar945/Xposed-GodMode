@@ -4,6 +4,8 @@ import android.graphics.Bitmap;
 import androidx.annotation.NonNull;
 import android.text.TextUtils;
 
+import java.util.Optional;
+
 /**
  * Simple static methods to be called at the start of your own methods to verify
  * correct arguments and state.
@@ -75,6 +77,18 @@ public final class Preconditions {
     public static <T> T checkNotNull(T reference, String message) {
         if (reference == null)
             throw new NullPointerException(message);
+        return reference;
+    }
+
+    public static <T> T optionDefault(T reference, T defaultValue){
+        if (reference == null)
+            return defaultValue;
+        return reference;
+    }
+
+    public static CharSequence optionDefault(CharSequence reference, CharSequence defaultValue){
+        if (TextUtils.isEmpty(reference))
+            return defaultValue;
         return reference;
     }
 

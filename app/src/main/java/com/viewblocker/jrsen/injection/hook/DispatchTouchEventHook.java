@@ -135,7 +135,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         ViewHelper.markViewBounds(snapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
 
         //Make original view invisible
-        ViewController.applyRules(v, viewRule);
+        ViewController.applyRule(v, viewRule);
     }
 
     private void performDetachMirrorView(final View v) {
@@ -190,7 +190,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                         mirrorView.detachFromContainer();
                         particleView.detachFromContainer();
                         //应用规则
-                        ViewController.applyRules(v, viewRule);
+                        ViewController.applyRule(v, viewRule);
                     } finally {
                         mirrorView = null;
                         cancelView = null;

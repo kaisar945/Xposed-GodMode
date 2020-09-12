@@ -9,15 +9,15 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 
+import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
-import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
-import com.viewblocker.jrsen.preference.ImagePreviewPreference;
+import com.viewblocker.jrsen.preference.ImageViewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
@@ -77,58 +77,61 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
-        preference.setSummary("活动:" + (viewRule.activityClass != null ? viewRule.activityClass : "Unknown"));
+        preference.setTitle("所属界面");
+        preference.setSummary(Preconditions.optionDefault(viewRule.activityClass, "None"));
         preferenceScreen.addPreference(preference);
 
-        preference = new EditTextPreference(context);
-        preference.setKey(KEY_ALIAS);
-        preference.setSummary("控件别名:" + (viewRule.alias != null ? viewRule.alias : "未命名"));
-        preference.setOnPreferenceChangeListener(this);
-        preference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        EditTextPreference aliasEditTextPreference = new EditTextPreference(context);
+        aliasEditTextPreference.setKey(KEY_ALIAS);
+        aliasEditTextPreference.setTitle("别名");
+        aliasEditTextPreference.setDialogTitle("设置别名");
+        aliasEditTextPreference.setSummary(Preconditions.optionDefault(viewRule.alias, "设置别名"));
+        aliasEditTextPreference.setOnPreferenceChangeListener(this);
+        aliasEditTextPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
                 ((EditTextPreference) preference).setText(viewRule.alias);
                 return false;
             }
         });
+        preference = aliasEditTextPreference;
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         Rect bounds = new Rect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
-        preference.setSummary("控件边界:" + bounds.toShortString());
+        preference.setTitle("边界");
+        preference.setSummary(bounds.toShortString());
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setSummary("控件类型:" + viewRule.viewClass);
+        preference.setTitle("类型");
+        preference.setSummary(viewRule.viewClass);
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setSummary("控件布局深度:" + Arrays.toString(viewRule.depth));
+        preference.setTitle("布局深度");
+        preference.setSummary(Arrays.toString(viewRule.depth));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setSummary("控件资源名称:" + viewRule.resourceName);
+        preference.setTitle("资源名称");
+        preference.setSummary(viewRule.resourceName);
         preferenceScreen.addPreference(preference);
 
-        ListPreference listPreference = new ListPreference(context);
-        listPreference.setKey(KEY_VISIBILITY);
-        listPreference.setOnPreferenceChangeListener(this);
-        preference = listPreference;
-        listPreference.setDialogTitle("控件可见性");
+
+        DropDownPreference dropDownPreference = new DropDownPreference(context);
+        dropDownPreference.setKey(KEY_VISIBILITY);
+        dropDownPreference.setOnPreferenceChangeListener(this);
+        dropDownPreference.setTitle("可见性");
         CharSequence[] entries = {"占位", "不占位"};
-        listPreference.setEntries(entries);
-        listPreference.setEntryValues(new CharSequence[]{String.valueOf(View.INVISIBLE), String.valueOf(View.GONE)});
-        listPreference.setDefaultValue(String.valueOf(viewRule.visibility));
-        listPreference.setSummary("控件可见性:" + (viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
+        dropDownPreference.setSummary((viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
+        dropDownPreference.setEntries(entries);
+        dropDownPreference.setEntryValues(new CharSequence[]{String.valueOf(View.INVISIBLE), String.valueOf(View.GONE)});
+        preference = dropDownPreference;
         preferenceScreen.addPreference(preference);
-
         boolean hasSnapshot = !TextUtils.isEmpty(viewRule.imagePath);
-        preference = new Preference(context);
-        preference.setSummary(hasSnapshot ? "控件预览:" : "该控件没有预览图");
-        preferenceScreen.addPreference(preference);
-
         if (hasSnapshot) {
-            preference = new ImagePreviewPreference(context);
+            preference = new ImageViewPreference(context);
             snapshot = BitmapFactory.decodeFile(viewRule.imagePath);
             preference.setDefaultValue(snapshot);
             preferenceScreen.addPreference(preference);
@@ -152,25 +155,27 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        String s = preference.getKey();
+        String key = preference.getKey();
         GodModeManager manager = GodModeManager.getDefault();
-        if (KEY_ALIAS.equals(s)) {
+        if (KEY_ALIAS.equals(key)) {
             preference.setSummary("控件别名:" + newValue);
             viewRule.alias = (String) newValue;
             manager.updateRule(packageName.toString(), viewRule);
             dataObserver.onItemChanged(index);
             return false;
-        } else if (KEY_VISIBILITY.equals(s)) {
-            ListPreference listPreference = (ListPreference) preference;
-            CharSequence[] entries = listPreference.getEntries();
-            int origVisibility = viewRule.visibility;
-            viewRule.visibility = Integer.parseInt((String) newValue);
-            if (!manager.updateRule(packageName.toString(), viewRule)) {
-                viewRule.visibility = origVisibility;
+        } else if (KEY_VISIBILITY.equals(key)) {
+            DropDownPreference dropDownPreference = (DropDownPreference) preference;
+            int newVisibility = Integer.parseInt((String) newValue);
+            int oldVisibility = viewRule.visibility;
+            viewRule.visibility = newVisibility;
+            if (newVisibility != oldVisibility && manager.updateRule(packageName.toString(), viewRule)) {
+                CharSequence[] entries = dropDownPreference.getEntries();
+                dropDownPreference.setSummary("控件可见性:" + (viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
+                dataObserver.onItemChanged(index);
+            } else {
+                viewRule.visibility = oldVisibility;
             }
-            listPreference.setValue(String.valueOf(viewRule.visibility));
-            listPreference.setSummary("控件可见性:" + (viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
-            dataObserver.onItemChanged(index);
+
         }
         return true;
     }

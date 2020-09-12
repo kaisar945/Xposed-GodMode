@@ -16,12 +16,15 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.TextView;
 
+import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
 import java.util.Objects;
 
 import de.robv.android.xposed.XposedHelpers;
+
+import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 /**
  * Created by jrsen on 17-10-13.
@@ -30,6 +33,7 @@ import de.robv.android.xposed.XposedHelpers;
 public final class ViewHelper {
 
     public static View findViewBestMatch(Activity activity, ViewRule rule) {
+        // if the rule version and the application version are the same, use strict mode.
         boolean strictMode = false;
         try {
             ClassLoader cl = activity.getClassLoader();
@@ -40,17 +44,22 @@ public final class ViewHelper {
             try {
                 PackageInfo packageInfo = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
                 strictMode = packageInfo.versionCode == rule.versionCode;
-            } catch (PackageManager.NameNotFoundException ignore1) {
+            } catch (PackageManager.NameNotFoundException e) {
+                Logger.w(TAG, "See what happened!", e);
             }
         }
         View view;
         if (!TextUtils.isEmpty(rule.description)) {
+            Logger.i(TAG, String.format("strict mode %b, match view by description", strictMode));
             view = matchView(findViewByDescription(activity.getWindow().getDecorView(), rule.description), rule, strictMode);
         } else if (!TextUtils.isEmpty(rule.text)) {
+            Logger.i(TAG, String.format("strict mode %b, match view by text", strictMode));
             view = matchView(findViewByText(activity.getWindow().getDecorView(), rule.text), rule, strictMode);
         } else if (!TextUtils.isEmpty(rule.resourceName)) {
+            Logger.i(TAG, String.format("strict mode %b, match view by resource name", strictMode));
             view = matchView(activity.findViewById(rule.getViewId(activity.getResources())), rule, strictMode);
         } else {
+            Logger.i(TAG, String.format("strict mode %b, match view by depth", strictMode));
             view = matchView(findViewByDepth(activity, rule.depth), rule, strictMode);
         }
         return view;
@@ -65,9 +74,13 @@ public final class ViewHelper {
                 resourceName = view.getResources().getResourceName(view.getId());
             } catch (Resources.NotFoundException ignore) {
             }
-            String text = view instanceof TextView ? ((TextView) view).getText().toString() : null;
-            CharSequence description = view.getContentDescription();
+            String text = (view instanceof TextView) ? Preconditions.optionDefault(((TextView) view).getText(), "").toString() : "";
+            String description = Preconditions.optionDefault(view.getContentDescription(), "").toString();
             String viewClass = view.getClass().getName();
+            Logger.i(TAG, "view res name:" + resourceName);
+            Logger.i(TAG, "view text:" + text);
+            Logger.i(TAG, "view description:" + description);
+            Logger.i(TAG, "view class:" + viewClass);
             if (strictMode) {
                 return TextUtils.equals(resourceName, rule.resourceName)
                         && TextUtils.equals(text, rule.text)

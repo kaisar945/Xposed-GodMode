@@ -50,7 +50,7 @@ import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXU;
 public final class GodModeManagerService extends IGodModeManager.Stub implements Handler.Callback {
 
     /* /data/godmode */
-    private final static String BASE_DIR = new File(Environment.getDataDirectory(), "godmode").getAbsolutePath();
+    private final static String BASE_DIR = String.format("%s/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
     /* /data/godmode/conf */
     private final static String CONFIG_FILE_NAME = "conf";
     /* /data/godmode/com.tencent.mm/com.tencent.mm.rule */

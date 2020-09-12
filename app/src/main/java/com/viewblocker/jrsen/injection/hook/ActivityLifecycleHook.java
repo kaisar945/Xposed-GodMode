@@ -70,7 +70,7 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
             try {
                 Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
                 List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
-                ViewController.revokeRule(activity, viewRules);
+                ViewController.revokeRuleBatch(activity, viewRules);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -83,7 +83,7 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
             try {
                 Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
                 List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
-                ViewController.applyRules(activity, viewRules);
+                ViewController.applyRuleBatch(activity, viewRules);
             } catch (Exception e) {
                 e.printStackTrace();
             }
