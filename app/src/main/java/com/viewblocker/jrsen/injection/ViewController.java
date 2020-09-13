@@ -1,6 +1,8 @@
 package com.viewblocker.jrsen.injection;
 
 import android.app.Activity;
+import android.util.Pair;
+import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -8,10 +10,9 @@ import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
-
-import de.robv.android.xposed.XposedHelpers;
 
 import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
@@ -21,86 +22,118 @@ import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 public final class ViewController {
 
-    private static final String CLICKABLE = "clickable";
-    private static final String LAYOUT_PARAMS_WIDTH = "layout_params_width";
-    private static final String LAYOUT_PARAMS_HEIGHT = "layout_params_height";
+    private static SparseArray<Pair<SoftReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
 
     public static void applyRuleBatch(Activity activity, List<ViewRule> rules) {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
                 Logger.d(TAG, "apply rule:" + rule.toString());
-                View view = ViewHelper.findViewBestMatch(activity, rule);
-                Preconditions.checkNotNull(view, "can't found view by rule apply failed");
-                Logger.i(TAG, String.format("###block success [Act]:%s  [View]:%s", activity, view));
-                applyRule(view, rule);
+                Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
+                View view = viewInfo != null ? viewInfo.first.get() : null;
+                if (view == null || ViewHelper.getAttachedActivityFromView(view) != activity) {
+                    blockedViewCache.remove(rule.hashCode());
+                    view = ViewHelper.findViewBestMatch(activity, rule);
+                    Preconditions.checkNotNull(view, "apply rule fail can't found view by rule ");
+                }
+                boolean blocked = applyRule(view, rule);
+                if (blocked) {
+                    Logger.i(TAG, String.format("###block view success [Act]:%s  [View]:%s", activity, view));
+                } else {
+                    Logger.i(TAG, "###block view skipped this view already be blocked");
+                }
             } catch (NullPointerException e) {
-                Logger.w(TAG, String.format("###block failed [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
+                Logger.w(TAG, String.format("###block view fail [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
             }
         }
     }
 
-    public static void applyRule(View v, ViewRule viewRule) {
-        saveViewPropertyIfNeeded(v);
-        v.setClickable(false);
+    public static boolean applyRule(View v, ViewRule viewRule) {
+        Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
+        View blockedView = viewInfo != null ? viewInfo.first.get() : null;
+        if (blockedView == v && v.getVisibility() == viewRule.visibility) {
+            return false;
+        }
+        ViewProperty viewProperty = blockedView == v ? viewInfo.second : ViewProperty.create(v);
         v.setAlpha(0f);
-        v.setVisibility(viewRule.visibility);
+        v.setClickable(false);
         ViewGroup.LayoutParams lp = v.getLayoutParams();
-        if (viewRule.visibility == View.GONE && lp != null) {
-            lp.width = 0;
-            lp.height = 0;
-        } else if (viewRule.visibility == View.INVISIBLE && lp != null) {
-            lp.width = (int) XposedHelpers.getAdditionalInstanceField(v, LAYOUT_PARAMS_WIDTH);
-            lp.height = (int) XposedHelpers.getAdditionalInstanceField(v, LAYOUT_PARAMS_HEIGHT);
-        }
-    }
-
-    private static void saveViewPropertyIfNeeded(View v) {
-        if (XposedHelpers.getAdditionalInstanceField(v, CLICKABLE) == null) {
-            XposedHelpers.setAdditionalInstanceField(v, CLICKABLE, v.isClickable());
-        }
-        if (XposedHelpers.getAdditionalInstanceField(v, LAYOUT_PARAMS_WIDTH) == null && XposedHelpers.getAdditionalInstanceField(v, LAYOUT_PARAMS_HEIGHT) == null) {
-            ViewGroup.LayoutParams layoutParams = v.getLayoutParams();
-            if (layoutParams != null) {
-                XposedHelpers.setAdditionalInstanceField(v, LAYOUT_PARAMS_WIDTH, layoutParams.width);
-                XposedHelpers.setAdditionalInstanceField(v, LAYOUT_PARAMS_HEIGHT, layoutParams.height);
+        if (lp != null) {
+            switch (viewRule.visibility) {
+                case View.GONE:
+                    lp.width = 0;
+                    lp.height = 0;
+                    break;
+                case View.INVISIBLE:
+                    lp.width = viewProperty.layout_params_width;
+                    lp.height = viewProperty.layout_params_height;
+                    break;
             }
         }
+        v.setVisibility(viewRule.visibility);
+        blockedViewCache.put(viewRule.hashCode(), Pair.create(new SoftReference<>(v), viewProperty));
+        return true;
     }
 
     public static void revokeRuleBatch(Activity activity, List<ViewRule> rules) {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
                 Logger.d(TAG, "revoke rule:" + rule.toString());
-                View view = ViewHelper.findViewBestMatch(activity, rule);
-                Preconditions.checkNotNull(view, "can't found block view revoke rule failed");
-                Logger.i(TAG, String.format("###revoke success [Act]:%s  [View]:%s", activity, view));
-                //revoke block view
-                rule.visibility = View.VISIBLE;
-                ViewController.revokeRule(view, rule);
+                Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
+                View view = viewInfo != null ? viewInfo.first.get() : null;
+                if (view == null) {
+                    blockedViewCache.remove(rule.hashCode());
+                    view = ViewHelper.findViewBestMatch(activity, rule);
+                    Preconditions.checkNotNull(view, "revoke rule fail can't found block view");
+                }
+                revokeRule(view, rule);
+                Logger.i(TAG, String.format("###revoke rule success [Act]:%s  [View]:%s", activity, view));
             } catch (NullPointerException e) {
-                Logger.w(TAG, String.format("###revoke failed [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
+                Logger.w(TAG, String.format("###revoke rule fail [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
             }
         }
     }
 
     public static void revokeRule(View v, ViewRule viewRule) {
-        restoreViewPropertyIfNeeded(v);
-        v.setAlpha(1f);
-        v.setVisibility(viewRule.visibility);
+        Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
+        if (viewInfo != null && viewInfo.first.get() == v) {
+            ViewProperty viewProperty = viewInfo.second;
+            v.setAlpha(viewProperty.alpha);
+            v.setClickable(viewProperty.clickable);
+            ViewGroup.LayoutParams lp = v.getLayoutParams();
+            if (lp != null) {
+                lp.width = viewProperty.layout_params_width;
+                lp.height = viewProperty.layout_params_height;
+            }
+            v.setVisibility(viewRule.visibility);
+            blockedViewCache.remove(viewRule.hashCode());
+        } else {
+            // cache missing why?
+            v.setAlpha(1f);
+            v.setVisibility(viewRule.visibility);
+        }
     }
 
-    private static void restoreViewPropertyIfNeeded(View v) {
-        Object clickable = XposedHelpers.removeAdditionalInstanceField(v, CLICKABLE);
-        if (clickable != null) {
-            v.setClickable((Boolean) clickable);
+    private static final class ViewProperty {
+
+        final float alpha;
+        final boolean clickable;
+        final int layout_params_width;
+        final int layout_params_height;
+
+        public ViewProperty(float alpha, boolean clickable, int layout_params_width, int layout_params_height) {
+            this.alpha = alpha;
+            this.clickable = clickable;
+            this.layout_params_width = layout_params_width;
+            this.layout_params_height = layout_params_height;
         }
-        Object width = XposedHelpers.removeAdditionalInstanceField(v, LAYOUT_PARAMS_WIDTH);
-        Object height = XposedHelpers.removeAdditionalInstanceField(v, LAYOUT_PARAMS_HEIGHT);
-        ViewGroup.LayoutParams layoutParams = v.getLayoutParams();
-        if (width != null && height != null && layoutParams != null) {
-            layoutParams.width = (int) width;
-            layoutParams.height = (int) height;
-            v.requestLayout();
+
+        public static ViewProperty create(View view) {
+            float alpha = view.getAlpha();
+            boolean clickable = view.isClickable();
+            ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+            int width = layoutParams != null ? layoutParams.width : 0;
+            int height = layoutParams != null ? layoutParams.height : 1;
+            return new ViewProperty(alpha, clickable, width, height);
         }
     }
 

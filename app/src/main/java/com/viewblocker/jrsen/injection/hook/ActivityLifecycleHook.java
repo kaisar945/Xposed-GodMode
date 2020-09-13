@@ -13,7 +13,6 @@ import com.viewblocker.jrsen.rule.ViewRule;
 import java.lang.ref.SoftReference;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -51,11 +50,9 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
     public void onPropertyChange(ActRules newActRules) {
         Set<Map.Entry<String, List<ViewRule>>> entrySet = newActRules.entrySet();
         for (Map.Entry<String, List<ViewRule>> entry : entrySet) {
-            try {
-                List<ViewRule> viewRules = actRules.get(entry.getKey());
-                Objects.requireNonNull(viewRules).removeAll(entry.getValue());
-            } catch (Exception e) {
-//                e.printStackTrace();
+            List<ViewRule> viewRules = actRules.get(entry.getKey());
+            if (viewRules != null){
+                viewRules.removeAll(entry.getValue());
             }
         }
         revokeRuleForActivity(actRules);
@@ -67,12 +64,10 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
     private void revokeRuleForActivity(ActRules actRules) {
         final int N = sActivities.size();
         for (int i = 0; i < N; i++) {
-            try {
-                Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
-                List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
+            Activity activity = sActivities.valueAt(i).get();
+            if (activity != null && actRules.containsKey(activity.getComponentName().getClassName())) {
+                List<ViewRule> viewRules = actRules.get(activity.getComponentName().getClassName());
                 ViewController.revokeRuleBatch(activity, viewRules);
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
     }
@@ -80,12 +75,10 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
     private void applyRuleForActivity(ActRules actRules) {
         final int N = sActivities.size();
         for (int i = 0; i < N; i++) {
-            try {
-                Activity activity = Objects.requireNonNull(sActivities.valueAt(i).get());
-                List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(activity.getComponentName().getClassName()));
+            Activity activity = sActivities.valueAt(i).get();
+            if (activity != null && actRules.containsKey(activity.getComponentName().getClassName())) {
+                List<ViewRule> viewRules = actRules.get(activity.getComponentName().getClassName());
                 ViewController.applyRuleBatch(activity, viewRules);
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
     }

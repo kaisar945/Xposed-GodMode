@@ -307,6 +307,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                 viewRules.add(viewRule);
             }
             handle.obtainMessage(UPDATE_RULE, new Object[]{actRules, packageName}).sendToTarget();
+            notifyObserverRuleChanged(packageName, actRules);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -330,6 +331,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             boolean removed = viewRules.remove(viewRule);
             if (removed) {
                 handle.obtainMessage(DELETE_RULE, new Object[]{actRules, packageName, viewRule}).sendToTarget();
+                notifyObserverRuleChanged(packageName, actRules);
             }
             return removed;
         } catch (Exception e) {
@@ -350,6 +352,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         try {
             ruleCache.remove(packageName);
             handle.obtainMessage(DELETE_RULES, packageName).sendToTarget();
+            notifyObserverRuleChanged(packageName, new ActRules());
             return true;
         } catch (Exception e) {
             e.printStackTrace();

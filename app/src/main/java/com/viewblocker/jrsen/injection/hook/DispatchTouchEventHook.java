@@ -189,7 +189,6 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                     try {
                         mirrorView.detachFromContainer();
                         particleView.detachFromContainer();
-                        //应用规则
                         ViewController.applyRule(v, viewRule);
                     } finally {
                         mirrorView = null;

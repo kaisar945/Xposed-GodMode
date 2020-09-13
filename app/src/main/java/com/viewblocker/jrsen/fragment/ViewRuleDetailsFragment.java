@@ -77,15 +77,16 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
-        preference.setTitle("所属界面");
+        preference.setTitle("依附界面");
         preference.setSummary(Preconditions.optionDefault(viewRule.activityClass, "None"));
         preferenceScreen.addPreference(preference);
 
         EditTextPreference aliasEditTextPreference = new EditTextPreference(context);
         aliasEditTextPreference.setKey(KEY_ALIAS);
-        aliasEditTextPreference.setTitle("别名");
+        aliasEditTextPreference.setTitle("控件别名");
         aliasEditTextPreference.setDialogTitle("设置别名");
         aliasEditTextPreference.setSummary(Preconditions.optionDefault(viewRule.alias, "设置别名"));
+        aliasEditTextPreference.setPersistent(false);
         aliasEditTextPreference.setOnPreferenceChangeListener(this);
         aliasEditTextPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
@@ -99,12 +100,12 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
         preference = new Preference(context);
         Rect bounds = new Rect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
-        preference.setTitle("边界");
+        preference.setTitle("控件边界");
         preference.setSummary(bounds.toShortString());
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("类型");
+        preference.setTitle("控件类型");
         preference.setSummary(viewRule.viewClass);
         preferenceScreen.addPreference(preference);
 
@@ -120,13 +121,15 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
 
         DropDownPreference dropDownPreference = new DropDownPreference(context);
+        dropDownPreference.setPersistent(false);
         dropDownPreference.setKey(KEY_VISIBILITY);
         dropDownPreference.setOnPreferenceChangeListener(this);
         dropDownPreference.setTitle("可见性");
         CharSequence[] entries = {"占位", "不占位"};
-        dropDownPreference.setSummary((viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
+        dropDownPreference.setSummary("%s");
         dropDownPreference.setEntries(entries);
         dropDownPreference.setEntryValues(new CharSequence[]{String.valueOf(View.INVISIBLE), String.valueOf(View.GONE)});
+        dropDownPreference.setValue(String.valueOf(viewRule.visibility));
         preference = dropDownPreference;
         preferenceScreen.addPreference(preference);
         boolean hasSnapshot = !TextUtils.isEmpty(viewRule.imagePath);
@@ -158,24 +161,17 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         String key = preference.getKey();
         GodModeManager manager = GodModeManager.getDefault();
         if (KEY_ALIAS.equals(key)) {
-            preference.setSummary("控件别名:" + newValue);
             viewRule.alias = (String) newValue;
+            preference.setSummary(viewRule.alias);
             manager.updateRule(packageName.toString(), viewRule);
             dataObserver.onItemChanged(index);
-            return false;
         } else if (KEY_VISIBILITY.equals(key)) {
-            DropDownPreference dropDownPreference = (DropDownPreference) preference;
             int newVisibility = Integer.parseInt((String) newValue);
-            int oldVisibility = viewRule.visibility;
-            viewRule.visibility = newVisibility;
-            if (newVisibility != oldVisibility && manager.updateRule(packageName.toString(), viewRule)) {
-                CharSequence[] entries = dropDownPreference.getEntries();
-                dropDownPreference.setSummary("控件可见性:" + (viewRule.visibility == View.INVISIBLE ? entries[0] : entries[1]));
+            if (newVisibility != viewRule.visibility) {
+                viewRule.visibility = newVisibility;
+                manager.updateRule(packageName.toString(), viewRule);
                 dataObserver.onItemChanged(index);
-            } else {
-                viewRule.visibility = oldVisibility;
             }
-
         }
         return true;
     }
