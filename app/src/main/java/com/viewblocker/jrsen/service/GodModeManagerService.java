@@ -75,6 +75,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         writerThread.start();
         handle = new Handler(writerThread.getLooper(), this);
         loadSuccess = loadPreferenceData();
+        //disable edit mode on system up
+        setEditMode(false);
     }
 
     private boolean loadPreferenceData() {

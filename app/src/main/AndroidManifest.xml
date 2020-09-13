@@ -3,6 +3,7 @@
     package="com.viewblocker.jrsen">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission-sdk-23 android:name="android.permission.FOREGROUND_SERVICE"/>
 
     <application
         android:name=".BlockerApplication"
@@ -54,12 +55,6 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
-
-        <receiver android:name=".ActionReceiver">
-            <intent-filter android:priority="2147483647">
-                <action android:name="android.intent.action.ACTION_SHUTDOWN" />
-            </intent-filter>
-        </receiver>
 
         <service
             android:name=".QuickSettingsCompatService"

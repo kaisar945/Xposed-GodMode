@@ -85,6 +85,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         setHasOptionsMenu(true);
         addPreferencesFromResource(R.xml.pref_general);
         mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(KEY_EDITOR_SWITCH);
+        mEditorSwitchPreference.setChecked(GodModeManager.getDefault().isInEditMode());
         mEditorSwitchPreference.setOnPreferenceChangeListener(this);
         mQuickSettingPreference = (CheckBoxPreference) findPreference(KEY_QUICK_SETTING);
         mQuickSettingPreference.setOnPreferenceChangeListener(this);
@@ -175,7 +176,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         if (mEditorSwitchPreference == preference) {
             boolean enable = (boolean) newValue;
             GodModeManager.getDefault().setEditMode(enable);
-//            Snackbar.make(getActivity(), R.string.toast_tip_force_stop, Snackbar.LENGTH_LONG).show();
         } else if (mQuickSettingPreference == preference) {
             boolean enable = (boolean) newValue;
             QuickSettingsCompatService.setComponentState(preference.getContext(), enable);
@@ -275,7 +275,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
         if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
             mEditorSwitchPreference.setChecked(sp.getBoolean(key, false));
-            sp.getBoolean(key, false);
         } else if (TextUtils.equals(key, KEY_QUICK_SETTING)) {
             mQuickSettingPreference.setChecked(sp.getBoolean(key, false));
         }

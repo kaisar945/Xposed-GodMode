@@ -22,14 +22,6 @@ public final class BlockerApplication extends Application {
         super.onCreate();
         _instance = this;
         initQuickSettingService();
-        registerActionReceiver();
-    }
-
-    private void registerActionReceiver() {
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_SCREEN_ON);
-        filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
-        registerReceiver(new ActionReceiver(), filter);
     }
 
     private void initQuickSettingService() {
