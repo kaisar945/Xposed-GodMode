@@ -21,7 +21,10 @@ import com.viewblocker.jrsen.preference.ImageViewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Locale;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -77,6 +80,17 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
+        preference.setTitle("创建日期");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault());
+        preference.setSummary(dateFormat.format(new Date(viewRule.timestamp)));
+        preferenceScreen.addPreference(preference);
+
+        preference = new Preference(context);
+        preference.setTitle("生成版本");
+        preference.setSummary(String.format(Locale.getDefault(), "%s %s", label, viewRule.matchVersionName));
+        preferenceScreen.addPreference(preference);
+
+        preference = new Preference(context);
         preference.setTitle("依附界面");
         preference.setSummary(Preconditions.optionDefault(viewRule.activityClass, "None"));
         preferenceScreen.addPreference(preference);
@@ -119,6 +133,18 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preference.setSummary(viewRule.resourceName);
         preferenceScreen.addPreference(preference);
 
+        if (!TextUtils.isEmpty(viewRule.text)) {
+            preference = new Preference(context);
+            preference.setTitle("控件文本");
+            preference.setSummary(viewRule.text);
+            preferenceScreen.addPreference(preference);
+        }
+        if (!TextUtils.isEmpty(viewRule.description)) {
+            preference = new Preference(context);
+            preference.setTitle("控件描述");
+            preference.setSummary(viewRule.description);
+            preferenceScreen.addPreference(preference);
+        }
 
         DropDownPreference dropDownPreference = new DropDownPreference(context);
         dropDownPreference.setPersistent(false);

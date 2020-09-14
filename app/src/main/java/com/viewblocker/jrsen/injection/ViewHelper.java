@@ -39,11 +39,11 @@ public final class ViewHelper {
             ClassLoader cl = activity.getClassLoader();
             Class<?> BuildConfigClass = cl.loadClass(activity.getPackageName() + ".BuildConfig");
             int versionCode = BuildConfigClass.getField("VERSION_CODE").getInt(null);
-            strictMode = versionCode == rule.versionCode;
+            strictMode = versionCode == rule.matchVersionCode;
         } catch (Exception ignore) {
             try {
                 PackageInfo packageInfo = activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0);
-                strictMode = packageInfo.versionCode == rule.versionCode;
+                strictMode = packageInfo.versionCode == rule.matchVersionCode;
             } catch (PackageManager.NameNotFoundException e) {
                 Logger.w(TAG, "See what happened!", e);
             }
@@ -184,7 +184,8 @@ public final class ViewHelper {
             int[] viewHierarchyDepth = getViewHierarchyDepth(v);
             String activityClassName = activity.getComponentName().getClassName();
             String viewClassName = v.getClass().getName();
-            Resources res = v.getContext().getResources();
+            Context context = v.getContext();
+            Resources res = context.getResources();
             String resourceName = null;
             try {
                 resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
@@ -194,9 +195,11 @@ public final class ViewHelper {
             String text = (v instanceof TextView && !TextUtils.isEmpty(((TextView) v).getText())) ? ((TextView) v).getText().toString() : "";
             String description = (!TextUtils.isEmpty(v.getContentDescription())) ? v.getContentDescription().toString() : "";
             String alias = !TextUtils.isEmpty(text) ? text : description;
-            String packageName = v.getContext().getPackageName();
-            int versionCode = v.getContext().getPackageManager().getPackageInfo(packageName, 0).versionCode;
-            return new ViewRule(packageName, versionCode, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
+            String packageName = context.getPackageName();
+            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
+            String versionName = packageInfo.versionName;
+            int versionCode = packageInfo.versionCode;
+            return new ViewRule(packageName, versionName, versionCode, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
         } catch (Exception e) {
             return null;
         }
