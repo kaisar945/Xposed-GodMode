@@ -26,7 +26,7 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        String crashLog = CrashHandler.getCrashLog();
+        String crashLog = CrashHandler.loadCrashLog();
         if (!TextUtils.isEmpty(crashLog)) {
             showErrorDialog(crashLog);
             return;
@@ -78,7 +78,7 @@ public class SettingsActivity extends AppCompatActivity {
     private void showErrorDialog(final String stackTrace) {
         SpannableString text = new SpannableString("    我想 你遇到些麻烦 说实话我真不想看到这样情况但是它的确出现了 噢 我亲爱的上帝也不能保佑它可以完美的运行 是的 我保证 不过你应该告诉我也许可以试试修复\n\n");
         SpannableString st = new SpannableString(stackTrace);
-        st.setSpan(new RelativeSizeSpan(0.3f), 0, st.length(), 0);
+        st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
         CharSequence message = TextUtils.concat(text, st);
         new AlertDialog.Builder(this)
                 .setCancelable(false)
@@ -88,7 +88,7 @@ public class SettingsActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Clipboard.putContent(getApplicationContext(), stackTrace);
-                        CrashHandler.handledCrashLog();
+                        CrashHandler.clearCrashLog();
                         CrashHandler.restart(SettingsActivity.this);
                     }
                 })

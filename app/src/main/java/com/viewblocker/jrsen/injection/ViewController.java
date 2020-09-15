@@ -13,6 +13,7 @@ import com.viewblocker.jrsen.util.Preconditions;
 import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
@@ -24,27 +25,41 @@ public final class ViewController {
 
     private static SparseArray<Pair<SoftReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
 
+    private static void printBlockedViewInfo() {
+        Logger.d(TAG, "[BlockedViewCache info start------------------------------------]");
+        final int N = blockedViewCache.size();
+        for (int i = 0; i < N; i++) {
+            int key = blockedViewCache.keyAt(i);
+            Pair<SoftReference<View>, ViewProperty> pair = blockedViewCache.get(key);
+            Logger.d(TAG, String.format(Locale.getDefault(), "blocked view cache %d=%s\n%s", key, pair.first.get(), pair.second));
+        }
+        Logger.d(TAG, "[BlockedViewCache info end------------------------------------]");
+    }
+
     public static void applyRuleBatch(Activity activity, List<ViewRule> rules) {
+        Logger.d(TAG, "[ApplyRuleBatch info start------------------------------------]");
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
-                Logger.d(TAG, "apply rule:" + rule.toString());
+                Logger.d(TAG, "[Apply rule]:" + rule.toString());
                 Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
                 View view = viewInfo != null ? viewInfo.first.get() : null;
                 if (view == null || ViewHelper.getAttachedActivityFromView(view) != activity) {
                     blockedViewCache.remove(rule.hashCode());
                     view = ViewHelper.findViewBestMatch(activity, rule);
-                    Preconditions.checkNotNull(view, "apply rule fail can't found view by rule ");
+                    Preconditions.checkNotNull(view, "apply rule fail not match any view");
                 }
                 boolean blocked = applyRule(view, rule);
                 if (blocked) {
-                    Logger.i(TAG, String.format("###block view success [Act]:%s  [View]:%s", activity, view));
+                    Logger.i(TAG, String.format("[Success] %s#%s has been blocked", activity, view));
+                    printBlockedViewInfo();
                 } else {
-                    Logger.i(TAG, "###block view skipped this view already be blocked");
+                    Logger.i(TAG, String.format("[Skipped] %s#%s already be blocked", activity, view));
                 }
             } catch (NullPointerException e) {
-                Logger.w(TAG, String.format("###block view fail [Act]:%s  [View]:%s [Reason]:%s", activity, null, e.getMessage()));
+                Logger.w(TAG, String.format("[Failed] %s#%s block failed because %s", activity, rule.viewClass, e.getMessage()));
             }
         }
+        Logger.d(TAG, "[ApplyRuleBatch info end------------------------------------]");
     }
 
     public static boolean applyRule(View v, ViewRule viewRule) {
@@ -68,9 +83,11 @@ public final class ViewController {
                     lp.height = viewProperty.layout_params_height;
                     break;
             }
+            v.requestLayout();
         }
         v.setVisibility(viewRule.visibility);
         blockedViewCache.put(viewRule.hashCode(), Pair.create(new SoftReference<>(v), viewProperty));
+        Logger.d(TAG, String.format(Locale.getDefault(), "apply rule add view cache %d=%s", viewRule.hashCode(), v));
         return true;
     }
 
@@ -81,10 +98,13 @@ public final class ViewController {
                 Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
                 View view = viewInfo != null ? viewInfo.first.get() : null;
                 if (view == null) {
+                    Logger.w(TAG, "view cache not found");
                     blockedViewCache.remove(rule.hashCode());
                     view = ViewHelper.findViewBestMatch(activity, rule);
+                    Logger.w(TAG, "find view in activity" + view);
                     Preconditions.checkNotNull(view, "revoke rule fail can't found block view");
                 }
+                printBlockedViewInfo();
                 revokeRule(view, rule);
                 Logger.i(TAG, String.format("###revoke rule success [Act]:%s  [View]:%s", activity, view));
             } catch (NullPointerException e) {
@@ -99,15 +119,18 @@ public final class ViewController {
             ViewProperty viewProperty = viewInfo.second;
             v.setAlpha(viewProperty.alpha);
             v.setClickable(viewProperty.clickable);
+            v.setVisibility(viewProperty.visibility);
             ViewGroup.LayoutParams lp = v.getLayoutParams();
             if (lp != null) {
                 lp.width = viewProperty.layout_params_width;
                 lp.height = viewProperty.layout_params_height;
+                v.requestLayout();
             }
-            v.setVisibility(viewRule.visibility);
             blockedViewCache.remove(viewRule.hashCode());
+            Logger.d(TAG, String.format(Locale.getDefault(), "revoke blocked view %d=%s %s", viewRule.hashCode(), v, viewProperty));
         } else {
             // cache missing why?
+            Logger.w(TAG, "view cache missing why?");
             v.setAlpha(1f);
             v.setVisibility(viewRule.visibility);
         }
@@ -117,23 +140,38 @@ public final class ViewController {
 
         final float alpha;
         final boolean clickable;
+        final int visibility;
         final int layout_params_width;
         final int layout_params_height;
 
-        public ViewProperty(float alpha, boolean clickable, int layout_params_width, int layout_params_height) {
+        public ViewProperty(float alpha, boolean clickable, int visibility, int layout_params_width, int layout_params_height) {
             this.alpha = alpha;
             this.clickable = clickable;
+            this.visibility = visibility;
             this.layout_params_width = layout_params_width;
             this.layout_params_height = layout_params_height;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuffer sb = new StringBuffer("ViewProperty{");
+            sb.append("alpha=").append(alpha);
+            sb.append(", clickable=").append(clickable);
+            sb.append(", visibility=").append(visibility);
+            sb.append(", layout_params_width=").append(layout_params_width);
+            sb.append(", layout_params_height=").append(layout_params_height);
+            sb.append('}');
+            return sb.toString();
         }
 
         public static ViewProperty create(View view) {
             float alpha = view.getAlpha();
             boolean clickable = view.isClickable();
+            int visibility = view.getVisibility();
             ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
             int width = layoutParams != null ? layoutParams.width : 0;
             int height = layoutParams != null ? layoutParams.height : 1;
-            return new ViewProperty(alpha, clickable, width, height);
+            return new ViewProperty(alpha, clickable, visibility, width, height);
         }
     }
 

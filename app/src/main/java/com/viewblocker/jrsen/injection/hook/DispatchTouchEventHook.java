@@ -19,6 +19,7 @@ import com.viewblocker.jrsen.injection.BlockerInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
+import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.view.CancelView;
 import com.viewblocker.jrsen.injection.view.MirrorView;
 import com.viewblocker.jrsen.injection.view.ParticleView;
@@ -26,9 +27,12 @@ import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
 import java.lang.ref.SoftReference;
+import java.util.Locale;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
+
+import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 /**
  * Created by jrsen on 17-12-6.
@@ -135,7 +139,9 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         ViewHelper.markViewBounds(snapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
 
         //Make original view invisible
+        Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] start------------------------------------"));
         ViewController.applyRule(v, viewRule);
+        Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] end------------------------------------"));
     }
 
     private void performDetachMirrorView(final View v) {
@@ -153,44 +159,39 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 mirrorView.detachFromContainer();
                 viewRule.visibility = View.VISIBLE;
                 ViewController.revokeRule(v, viewRule);
+                if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
             } finally {
-                if (Preconditions.checkBitmap(snapshot)) {
-                    snapshot.recycle();
-                }
                 snapshot = null;
                 mirrorView = null;
                 cancelView = null;
                 viewRule = null;
             }
-
         } else {
             //Make original view gone
             viewRule.visibility = View.GONE;
-            try {
-                GodModeManager manager = GodModeManager.getDefault();
-                manager.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
-            } finally {
-                if (Preconditions.checkBitmap(snapshot)) {
-                    snapshot.recycle();
-                }
-            }
+            Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] start------------------------------------"));
+            ViewController.applyRule(v, viewRule);
+            Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] end------------------------------------"));
+            GodModeManager manager = GodModeManager.getDefault();
+            manager.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
+            if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
             final ParticleView particleView = new ParticleView(activity, 1000);
             particleView.attachToContainer(container);
             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                 @Override
-                public void onAnimationStart(View v, Animator animation) {
+                public void onAnimationStart(View animView, Animator animation) {
                     mirrorView.setVisibility(View.INVISIBLE);
                 }
 
                 @Override
-                public void onAnimationEnd(View v, Animator animation) {
+                public void onAnimationEnd(View animView, Animator animation) {
                     try {
                         mirrorView.detachFromContainer();
                         particleView.detachFromContainer();
-                        ViewController.applyRule(v, viewRule);
                     } finally {
+                        snapshot = null;
                         mirrorView = null;
                         cancelView = null;
                         viewRule = null;

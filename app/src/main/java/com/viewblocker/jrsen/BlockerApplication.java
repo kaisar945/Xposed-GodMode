@@ -2,7 +2,6 @@ package com.viewblocker.jrsen;
 
 import android.app.Application;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.preference.PreferenceManager;
@@ -14,13 +13,11 @@ import android.preference.PreferenceManager;
 public final class BlockerApplication extends Application {
 
     public static final String TAG = "ViewBlocker";
-    private static BlockerApplication _instance;
 
     @Override
     public void onCreate() {
-        CrashHandler.init();
+        CrashHandler.init(this);
         super.onCreate();
-        _instance = this;
         initQuickSettingService();
     }
 
@@ -36,10 +33,6 @@ public final class BlockerApplication extends Application {
                 startService(service);
             }
         }
-    }
-
-    public static BlockerApplication getApplication() {
-        return _instance;
     }
 
 }

@@ -69,7 +69,7 @@ public final class QuickSettingsCompatService extends Service implements SharedP
 
     @TargetApi(Build.VERSION_CODES.O)
     private void createNotificationChannel() {
-        NotificationChannel channel = new NotificationChannel(TAG, "GodChannel", NotificationManager.IMPORTANCE_LOW);
+        NotificationChannel channel = new NotificationChannel(TAG, "GodChannel", NotificationManager.IMPORTANCE_HIGH);
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) nm.createNotificationChannel(channel);
     }
