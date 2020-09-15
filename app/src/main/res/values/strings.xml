@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">上帝模式</string>
-    <string name="action_import_view_rule">导入规则</string>
 
     <string name="pref_header_general">通用</string>
     <string name="pref_header_support">支持</string>
@@ -18,17 +17,13 @@
     <string name="pref_title_add_group">加入组织</string>
     <string name="pref_description_add_group">这里有一群老伙计们</string>
 
-    <string name="toast_tip_edit_enable">按下【电源键】强制退出编辑模式</string>
-    <string name="toast_tip_edit_disable">已退出编辑模式</string>
-    <string name="toast_tip_force_stop">嘿 伙计 你现在可以去其他应用去拖拽控件了! 如果遇到些麻烦 【强行停止应用】应该会对你有帮助！</string>
-
     <string name="menu_revert">恢复</string>
     <string name="menu_share">分享</string>
     <string name="thanks">感谢你我的伙计</string>
     <string name="tips_qrcord">嘿！伙计二维码帮你放相册了</string>
     <string name="dialog_btn_alipay">支付宝支持</string>
     <string name="dialog_btn_wxpay">微信支持</string>
-    <string name="donate_thanks">噢 上帝！ 你终于点到这里了！看看 我的伙计是多么的慷慨 感谢你的支持。</string>
+    <string name="donate_thanks">看看 我的伙计是多么的慷慨 感谢你的支持!</string>
     <string name="enter_edit">退出编辑</string>
     <string name="exit_edit">开始编辑</string>
     <string name="close">关闭</string>
@@ -49,9 +44,9 @@
     <string name="export_view_rule_success">嘿 伙计! 规则帮你放相册了</string>
     <string name="export_view_rule_failed">噢 真见鬼 居然失败了… 去向上帝祷告一下吧!</string>
 
-    <string name="field_rule_alias">[%1$s]\n</string>
-    <string name="field_activity">活动:%1$s</string>
-    <string name="field_view">控件:%1$s</string>
+    <string name="field_rule_alias" translatable="false">[%1$s]\n</string>
+    <string name="field_activity">依附界面:%1$s</string>
+    <string name="field_view">控件类型:%1$s</string>
 
     <string name="dialog_title_export">正在导出%1$s应用规则…</string>
     <string name="export_successful">导出成功,文件路径:%1$s</string>
@@ -61,7 +56,6 @@
     <string name="import_success">导入规则成功</string>
     <string name="import_failed">导入规则失败</string>
 
-    <string name="alipay_hb_link">https://render.alipay.com/p/f/fd-j6lzqrgm/guiderofmklvtvw.html?shareId=2088502888134072&amp;campStr=p1j%2BdzkZl018zOczaHT4Z5CLdPVCgrEXq89JsWOx1gdt05SIDMPg3PTxZbdPw9dL&amp;sign=U%2BSfpBugeQ4yDtqIFzmjKMbPVhaz49saGbwgr%2FjcEvc%3D&amp;scene=offlinePaymentNewSns</string>
     <string name="hey_guy">嘿 伙计</string>
     <string name="not_active_module">上帝模式还没有激活，呃… 我是说也许你应该到管理器中重新激活一下</string>
     <string name="go_setting">去设置</string>
@@ -69,7 +63,6 @@
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 
     <string name="dialog_loading">噢! 伙计 让我来看看这里有些什么</string>
-    <string name="snack_bar_msg_cont_fix_problem">无法修复此问题</string>
     <string name="snack_bar_msg_revert_rule_fail">恢复规则失败</string>
 
 </resources>
