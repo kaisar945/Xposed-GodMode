@@ -32,17 +32,16 @@ public final class QRCodeFactory {
 
     public static Bitmap encode(ViewRule viewRule) {
         try {
-            Bitmap image = null;
+            Objects.requireNonNull(viewRule.imagePath, "rule image path is null");
+            ViewRule copy = (ViewRule) viewRule.clone();
+            Bitmap image = BitmapFactory.decodeFile(copy.imagePath);
             try {
-                Objects.requireNonNull(viewRule.imagePath);
-                ViewRule viewRuleCopy = (ViewRule) viewRule.clone();
-                String imagePath = viewRuleCopy.imagePath;
-                image = BitmapFactory.decodeFile(imagePath);
-                viewRuleCopy.imagePath = null;
-                String json = new Gson().toJson(viewRuleCopy);
+                copy.imagePath = null;
+                String json = new Gson().toJson(copy);
                 return generateQRImage(image, json);
             } finally {
-                if (image != null) image.recycle();
+                if (!image.isRecycled())
+                    image.recycle();
             }
         } catch (Exception e) {
             return null;

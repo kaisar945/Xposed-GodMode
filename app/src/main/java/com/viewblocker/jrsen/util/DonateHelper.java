@@ -64,7 +64,7 @@ public final class DonateHelper {
             Intent intent = pm.getLaunchIntentForPackage("com.tencent.mm");
             context.startActivity(intent);
             saveQrcodeImage2Gallery(context, R.mipmap.qrcode_wxpay);
-            Toast.makeText(context, "伙计 二维码已经放到相册了 点击+号扫一扫从相册选取", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.wechat_donate_tips, Toast.LENGTH_LONG).show();
         } catch (Throwable ignored) {
             showQRCodeDialog(context, R.mipmap.qrcode_wxpay, "com.tencent.mm");
         }

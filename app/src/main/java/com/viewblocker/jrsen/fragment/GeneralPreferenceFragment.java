@@ -229,9 +229,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     private void showUpdatePolicyDialog() {
         final AlertDialog dialog = new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.welcome_title)
-                .setMessage("\t我想你可以试试用上帝模式屏蔽一些令人烦恼的按钮。噢！没错这听起来很有趣。不过这个小家伙有时会像汤姆家那只该死的倔驴一样不听话，别担心伙计们，我会尽快修理好的！\n\n" +
-                        "\t伙计们玩的开心记得支持一下你们的老伙计 非常感谢！" +
-                        "噢 上帝啊 看看我到底在说些什么我想我应该安静一下...")
+                .setMessage(R.string.update_tips)
                 .setPositiveButton(R.string.dialog_btn_alipay, null)
                 .setNegativeButton(R.string.dialog_btn_wxpay, null)
                 .create();

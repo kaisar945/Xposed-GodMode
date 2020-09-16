@@ -80,26 +80,26 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
-        preference.setTitle("创建日期");
+        preference.setTitle(R.string.rule_details_field_create_time);
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault());
         preference.setSummary(dateFormat.format(new Date(viewRule.timestamp)));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("生成版本");
+        preference.setTitle(R.string.rule_details_field_generate_version);
         preference.setSummary(String.format(Locale.getDefault(), "%s %s", label, viewRule.matchVersionName));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("依附界面");
+        preference.setTitle(R.string.rule_details_field_activity);
         preference.setSummary(Preconditions.optionDefault(viewRule.activityClass, "None"));
         preferenceScreen.addPreference(preference);
 
         EditTextPreference aliasEditTextPreference = new EditTextPreference(context);
         aliasEditTextPreference.setKey(KEY_ALIAS);
-        aliasEditTextPreference.setTitle("控件别名");
-        aliasEditTextPreference.setDialogTitle("设置别名");
-        aliasEditTextPreference.setSummary(Preconditions.optionDefault(viewRule.alias, "设置别名"));
+        aliasEditTextPreference.setTitle(R.string.rule_details_field_alias);
+        aliasEditTextPreference.setDialogTitle(R.string.rule_details_set_alias);
+        aliasEditTextPreference.setSummary(Preconditions.optionDefault(viewRule.alias, getString(R.string.rule_details_set_alias)));
         aliasEditTextPreference.setPersistent(false);
         aliasEditTextPreference.setOnPreferenceChangeListener(this);
         aliasEditTextPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
@@ -114,34 +114,34 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
         preference = new Preference(context);
         Rect bounds = new Rect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
-        preference.setTitle("控件边界");
+        preference.setTitle(R.string.rule_details_field_view_bounds);
         preference.setSummary(bounds.toShortString());
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("控件类型");
+        preference.setTitle(R.string.rule_details_field_view_type);
         preference.setSummary(viewRule.viewClass);
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("布局深度");
+        preference.setTitle(R.string.rule_details_field_view_depth);
         preference.setSummary(Arrays.toString(viewRule.depth));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        preference.setTitle("资源名称");
+        preference.setTitle(R.string.rule_details_field_res_name);
         preference.setSummary(viewRule.resourceName);
         preferenceScreen.addPreference(preference);
 
         if (!TextUtils.isEmpty(viewRule.text)) {
             preference = new Preference(context);
-            preference.setTitle("控件文本");
+            preference.setTitle(R.string.rule_details_field_text);
             preference.setSummary(viewRule.text);
             preferenceScreen.addPreference(preference);
         }
         if (!TextUtils.isEmpty(viewRule.description)) {
             preference = new Preference(context);
-            preference.setTitle("控件描述");
+            preference.setTitle(R.string.rule_details_field_description);
             preference.setSummary(viewRule.description);
             preferenceScreen.addPreference(preference);
         }
@@ -150,8 +150,8 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         dropDownPreference.setPersistent(false);
         dropDownPreference.setKey(KEY_VISIBILITY);
         dropDownPreference.setOnPreferenceChangeListener(this);
-        dropDownPreference.setTitle("可见性");
-        CharSequence[] entries = {"占位", "不占位"};
+        dropDownPreference.setTitle(R.string.rule_details_field_visibility);
+        CharSequence[] entries = {getString(R.string.rule_details_invisible), getString(R.string.rule_details_gone)};
         dropDownPreference.setSummary("%s");
         dropDownPreference.setEntries(entries);
         dropDownPreference.setEntryValues(new CharSequence[]{String.valueOf(View.INVISIBLE), String.valueOf(View.GONE)});
