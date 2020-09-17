@@ -1,19 +1,22 @@
 package com.viewblocker.jrsen.injection.hook;
 
 import android.app.Activity;
-import android.util.SparseArray;
+import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 
 import com.viewblocker.jrsen.injection.ViewController;
+import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 
-import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import de.robv.android.xposed.XC_MethodHook;
 
@@ -21,9 +24,10 @@ import de.robv.android.xposed.XC_MethodHook;
  * Created by jrsen on 17-10-15.
  */
 
-public final class ActivityLifecycleHook extends XC_MethodHook implements Property.OnPropertyChangeListener<ActRules>, android.view.ViewTreeObserver.OnGlobalLayoutListener, ViewGroup.OnHierarchyChangeListener {
+public final class ActivityLifecycleHook extends XC_MethodHook implements Property.OnPropertyChangeListener<ActRules> {
 
-    private static SparseArray<SoftReference<Activity>> sActivities = new SparseArray<>();
+    private static final WeakHashMap<Activity, OnLayoutChangeListener> sActivities = new WeakHashMap<>();
+    private static final ActRules sActRules = new ActRules();
 
     @Override
     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
@@ -34,68 +38,83 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
         /*!!!这里有坑不要hook onCreate和onResume 因为getDecorView会执行installContentView的操作
          所以在Activity的子类中有可能去requestFeature会导致异常所以尽量找一个很靠后的生命周期函数*/
         if ("onPostResume".equals(methodName)) {
-            sActivities.put(activity.hashCode(), new SoftReference<>(activity));
-            decorView.setOnHierarchyChangeListener(this);
-            decorView.getViewTreeObserver().addOnGlobalLayoutListener(this);
+            if (!sActivities.containsKey(activity)) {
+                OnLayoutChangeListener listener = new OnLayoutChangeListener(activity);
+                decorView.setOnHierarchyChangeListener(listener);
+                decorView.getViewTreeObserver().addOnGlobalLayoutListener(listener);
+                sActivities.put(activity, listener);
+            }
+            Logger.d("ActivityHook", "resume:" + sActivities);
         } else if ("onDestroy".equals(methodName)) {
+            OnLayoutChangeListener listener = sActivities.remove(activity);
+            Logger.d("ActivityHook", "destroy:" + sActivities);
             decorView.setOnHierarchyChangeListener(null);
-            decorView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-            sActivities.remove(activity.hashCode());
+            decorView.getViewTreeObserver().removeOnGlobalLayoutListener(listener);
         }
     }
-
-    private ActRules actRules = new ActRules();
 
     @Override
     public void onPropertyChange(ActRules newActRules) {
-        Set<Map.Entry<String, List<ViewRule>>> entrySet = newActRules.entrySet();
-        for (Map.Entry<String, List<ViewRule>> entry : entrySet) {
-            List<ViewRule> viewRules = actRules.get(entry.getKey());
-            if (viewRules != null){
-                viewRules.removeAll(entry.getValue());
+        Set<Map.Entry<String, List<ViewRule>>> entries = newActRules.entrySet();
+        for (Map.Entry<String, List<ViewRule>> entry : entries) {
+            String key = entry.getKey();
+            List<ViewRule> oldRules = sActRules.get(key);
+            List<ViewRule> newRules = entry.getValue();
+            if (newRules != null && oldRules != null) {
+                oldRules.removeAll(newRules);
+                if (oldRules.isEmpty()) sActRules.remove(key);
             }
         }
-        revokeRuleForActivity(actRules);
-        actRules.clear();
-        actRules.putAll(newActRules);
-        applyRuleForActivity(actRules);
-    }
-
-    private void revokeRuleForActivity(ActRules actRules) {
-        final int N = sActivities.size();
-        for (int i = 0; i < N; i++) {
-            Activity activity = sActivities.valueAt(i).get();
-            if (activity != null && actRules.containsKey(activity.getComponentName().getClassName())) {
-                List<ViewRule> viewRules = actRules.get(activity.getComponentName().getClassName());
-                ViewController.revokeRuleBatch(activity, viewRules);
+        //revoke old rules
+        entries = sActRules.entrySet();
+        for (Map.Entry<String, List<ViewRule>> entry : entries) {
+            List<ViewRule> rules = entry.getValue();
+            for (Activity activity : sActivities.keySet()) {
+                if (TextUtils.equals(activity.getComponentName().getClassName(), entry.getKey())) {
+                    ViewController.revokeRuleBatch(activity, rules);
+                }
+            }
+        }
+        //apply new rules
+        sActRules.clear();
+        sActRules.putAll(newActRules);
+        entries = sActRules.entrySet();
+        for (Map.Entry<String, List<ViewRule>> entry : entries) {
+            List<ViewRule> rules = entry.getValue();
+            for (Activity activity : sActivities.keySet()) {
+                if (TextUtils.equals(activity.getComponentName().getClassName(), entry.getKey())) {
+                    ViewController.applyRuleBatch(activity, rules);
+                }
             }
         }
     }
 
-    private void applyRuleForActivity(ActRules actRules) {
-        final int N = sActivities.size();
-        for (int i = 0; i < N; i++) {
-            Activity activity = sActivities.valueAt(i).get();
-            if (activity != null && actRules.containsKey(activity.getComponentName().getClassName())) {
-                List<ViewRule> viewRules = actRules.get(activity.getComponentName().getClassName());
-                ViewController.applyRuleBatch(activity, viewRules);
+    static final class OnLayoutChangeListener implements ViewTreeObserver.OnGlobalLayoutListener, ViewGroup.OnHierarchyChangeListener {
+
+        final WeakReference<Activity> activityReference;
+
+        OnLayoutChangeListener(Activity activity) {
+            activityReference = new WeakReference<>(activity);
+        }
+
+        @Override
+        public void onChildViewAdded(View parent, View child) {
+            onGlobalLayout();
+        }
+
+        @Override
+        public void onChildViewRemoved(View parent, View child) {
+            onGlobalLayout();
+        }
+
+        @Override
+        public void onGlobalLayout() {
+            Activity activity = activityReference.get();
+            List<ViewRule> rules = activity != null ? sActRules.get(activity.getComponentName().getClassName()) : null;
+            if (rules != null && !rules.isEmpty()) {
+                ViewController.applyRuleBatch(activity, rules);
             }
         }
-    }
-
-    @Override
-    public void onGlobalLayout() {
-        applyRuleForActivity(actRules);
-    }
-
-    @Override
-    public void onChildViewAdded(View parent, View child) {
-        applyRuleForActivity(actRules);
-    }
-
-    @Override
-    public void onChildViewRemoved(View parent, View child) {
-        applyRuleForActivity(actRules);
     }
 
 }

@@ -130,7 +130,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
 
             //检查是否为无界面应用
             PackageInfo packageInfo = PackageManagerUtils.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES, 0);
-            if (packageInfo != null && packageInfo.activities.length == 0) {
+            if (packageInfo != null && packageInfo.activities != null && packageInfo.activities.length == 0) {
                 Logger.d(TAG, "no user interface app:" + resolveInfos);
                 return true;
             }
