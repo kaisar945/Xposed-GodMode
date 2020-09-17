@@ -45,7 +45,7 @@
     <string name="xposed_description">Like God, Remove any elements on the interface that you don’t like</string>
     <string name="export_view_rule_failed">Export failed</string>
     <string name="export_successful">Export success %1$s</string>
-    <string name="dialog_title_export">Exporting%1$s...</string>
+    <string name="dialog_title_export">Exporting%1$s…</string>
     <string name="menu_title_import_view_rule_description">"Select import rule image "</string>
     <string name="field_activity">Activity:%1$s</string>
     <string name="field_view">View:%1$s</string>
@@ -66,6 +66,6 @@
     <string name="rule_details_set_alias">Set alias</string>
     <string name="rule_details_field_visibility">visibility</string>
     <string name="update_tips">I think you can try to block some annoying buttons in God mode. Oh! Yes, it sounds interesting. But this little guy is sometimes as disobedient as the damn stubborn donkey at Tom\'s, don\'t worry guys, I will fix it as soon as possible!</string>
-    <string name="crash_tip">Crash detected</string>
+    <string name="crash_tip">Crash detected\n</string>
     <string name="rule_details_field_create_time">create time</string>
 </resources>

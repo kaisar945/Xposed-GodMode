@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 import android.os.IBinder;
 import android.os.IInterface;
 
@@ -17,7 +18,6 @@ public final class PackageManagerUtils {
     private static IInterface packageService;
 
     private static Object getIPackageManager() {
-        // TODO: 19-11-10 9.0系统可能存在兼容性的问题
         if (packageService == null) {
             try {
                 @SuppressLint("PrivateApi") Class<?> ServiceManagerClass = Class.forName("android.os.ServiceManager");
@@ -32,12 +32,29 @@ public final class PackageManagerUtils {
     }
 
     @SuppressWarnings("unchecked")
-    public static List<ResolveInfo> queryIntentServices(Intent intent, String type, int flags, int userId) {
-        Object parceledList = XposedHelpers.callMethod(getIPackageManager(), "queryIntentServices", intent, type, flags, userId);
-        if (parceledList == null) {
+    public static List<ResolveInfo> queryIntentActivities(Intent intent, String type, int flags, int userId) {
+        Object list = XposedHelpers.callMethod(getIPackageManager(), "queryIntentActivities", intent, type, flags, userId);
+        if (list == null) {
             return Collections.emptyList();
         }
-        return (List<ResolveInfo>) XposedHelpers.callMethod(parceledList, "getList");
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return (List<ResolveInfo>) list;
+        } else {
+            return (List<ResolveInfo>) XposedHelpers.callMethod(list, "getList");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static List<ResolveInfo> queryIntentServices(Intent intent, String type, int flags, int userId) {
+        Object list = XposedHelpers.callMethod(getIPackageManager(), "queryIntentServices", intent, type, flags, userId);
+        if (list == null) {
+            return Collections.emptyList();
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return (List<ResolveInfo>) list;
+        } else {
+            return (List<ResolveInfo>) XposedHelpers.callMethod(list, "getList");
+        }
     }
 
     public static ResolveInfo resolveIntent(Intent intent, String type, int flags, int userId) {

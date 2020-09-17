@@ -97,31 +97,43 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
             //检查是否为launcher应用
             Intent homeIntent = new Intent(Intent.ACTION_MAIN);
             homeIntent.addCategory(Intent.CATEGORY_HOME);
-            ResolveInfo resolveInfo = PackageManagerUtils.resolveIntent(homeIntent, null, PackageManager.MATCH_DEFAULT_ONLY, 0);
-            Logger.i(TAG, "default launcher:" + ((resolveInfo != null) ? resolveInfo.activityInfo.packageName : "null"));
-            if (resolveInfo != null && resolveInfo.activityInfo != null
-                    && TextUtils.equals(resolveInfo.activityInfo.packageName, packageName)) {
-                return true;
+            List<ResolveInfo> resolveInfos;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, PackageManager.MATCH_ALL, 0);
+            } else {
+                resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, 0, 0);
+            }
+            Logger.d(TAG, "launcher apps:" + resolveInfos);
+            if (resolveInfos != null) {
+                for (ResolveInfo resolveInfo : resolveInfos) {
+                    if (!TextUtils.equals("com.android.settings", packageName) && TextUtils.equals(resolveInfo.activityInfo.packageName, packageName)) {
+                        return true;
+                    }
+                }
             }
 
             //检查是否为键盘应用
             Intent keyboardIntent = new Intent("android.view.InputMethod");
-            List<ResolveInfo> resolveInfoList;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                resolveInfoList = PackageManagerUtils.queryIntentServices(keyboardIntent, null, PackageManager.MATCH_ALL, 0);
+                resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, PackageManager.MATCH_ALL, 0);
             } else {
-                resolveInfoList = PackageManagerUtils.queryIntentServices(keyboardIntent, null, PackageManager.MATCH_DEFAULT_ONLY, 0);
+                resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, 0, 0);
             }
-            Logger.i(TAG, "default keyboard:" + ((resolveInfo != null) ? resolveInfoList : "null"));
-            for (ResolveInfo info : resolveInfoList) {
-                if (TextUtils.equals(info.serviceInfo.packageName, packageName)) {
-                    return true;
+            Logger.d(TAG, "keyboard apps:" + resolveInfos);
+            if (resolveInfos != null) {
+                for (ResolveInfo resolveInfo : resolveInfos) {
+                    if (TextUtils.equals(resolveInfo.serviceInfo.packageName, packageName)) {
+                        return true;
+                    }
                 }
             }
 
             //检查是否为无界面应用
             PackageInfo packageInfo = PackageManagerUtils.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES, 0);
-            return packageInfo != null && packageInfo.activities != null && packageInfo.activities.length == 0;
+            if (packageInfo != null && packageInfo.activities.length == 0) {
+                Logger.d(TAG, "no user interface app:" + resolveInfos);
+                return true;
+            }
         } catch (Throwable t) {
             Logger.e(TAG, "checkWhiteListPackage crash", t);
         }
