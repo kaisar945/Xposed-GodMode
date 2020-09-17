@@ -14,7 +14,7 @@
     <string name="menu_share">Share with</string>
     <string name="dialog_btn_alipay">Alipay</string>
     <string name="dialog_btn_wxpay">WechatPay</string>
-    <string name="menu_revert">revoke</string>
+    <string name="menu_revert">Revoke</string>
     <string name="go_setting">Set</string>
     <string name="not_active_module">GodMode module is not activated</string>
     <string name="hey_guy">Hey guy</string>
