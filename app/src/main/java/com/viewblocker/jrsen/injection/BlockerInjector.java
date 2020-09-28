@@ -1,5 +1,6 @@
 package com.viewblocker.jrsen.injection;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -9,6 +10,7 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.MotionEvent;
@@ -20,8 +22,6 @@ import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.bridge.ManagerObserver;
 import com.viewblocker.jrsen.injection.hook.ActivityLifecycleHook;
 import com.viewblocker.jrsen.injection.hook.DispatchTouchEventHook;
-import com.viewblocker.jrsen.injection.hook.DisplayProperties;
-import com.viewblocker.jrsen.injection.hook.SystemPropertiesHook;
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.PackageManagerUtils;
 import com.viewblocker.jrsen.injection.util.Property;
@@ -29,6 +29,7 @@ import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.service.GodModeManagerService;
 import com.viewblocker.jrsen.service.XServiceManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -57,7 +58,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         BlockerInjector.loadPackageParam = loadPackageParam;
         final String packageName = loadPackageParam.packageName;
         switch (packageName) {
-            case "android": {
+            case "android":
                 // 注册系统服务
                 Logger.i(TAG, "inject GodModeManagerService as system service.");
                 XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<IBinder>() {
@@ -67,25 +68,22 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
                     }
                 });
                 XServiceManager.initManager();
-            }
-            break;
-            case BuildConfig.APPLICATION_ID: {
+                break;
+            case BuildConfig.APPLICATION_ID:
                 //检测上帝模式模块是否开启
                 XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
-            }
-            break;
-            default: {
+                break;
+            default:
                 if (checkBlockList(loadPackageParam.packageName)) {
                     Logger.i(TAG, String.format("%s in block list.", loadPackageParam.packageName));
                     return;
                 }
-                initHook(loadPackageParam.classLoader);
+                initHook();
                 GodModeManager manager = GodModeManager.getDefault();
                 manager.addObserver(loadPackageParam.packageName, new ManagerObserver());
                 switchProp.set(manager.isInEditMode());
                 actRuleProp.set(manager.getRules(loadPackageParam.packageName));
-            }
-            break;
+                break;
         }
     }
 
@@ -103,7 +101,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
             } else {
                 resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, 0, 0);
             }
-            Logger.d(TAG, "launcher apps:" + resolveInfos);
+//            Logger.d(TAG, "launcher apps:" + resolveInfos);
             if (resolveInfos != null) {
                 for (ResolveInfo resolveInfo : resolveInfos) {
                     if (!TextUtils.equals("com.android.settings", packageName) && TextUtils.equals(resolveInfo.activityInfo.packageName, packageName)) {
@@ -119,7 +117,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
             } else {
                 resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, 0, 0);
             }
-            Logger.d(TAG, "keyboard apps:" + resolveInfos);
+//            Logger.d(TAG, "keyboard apps:" + resolveInfos);
             if (resolveInfos != null) {
                 for (ResolveInfo resolveInfo : resolveInfos) {
                     if (TextUtils.equals(resolveInfo.serviceInfo.packageName, packageName)) {
@@ -131,7 +129,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
             //检查是否为无界面应用
             PackageInfo packageInfo = PackageManagerUtils.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES, 0);
             if (packageInfo != null && packageInfo.activities != null && packageInfo.activities.length == 0) {
-                Logger.d(TAG, "no user interface app:" + resolveInfos);
+//                Logger.d(TAG, "no user interface app:" + resolveInfos);
                 return true;
             }
         } catch (Throwable t) {
@@ -140,7 +138,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         return false;
     }
 
-    private void initHook(ClassLoader classLoader) {
+    private void initHook() {
         //hook activity#lifecycle block view
         ActivityLifecycleHook lifecycleHook = new ActivityLifecycleHook();
         actRuleProp.addOnPropertyChangeListener(lifecycleHook);
@@ -148,20 +146,40 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(Activity.class, "onDestroy", lifecycleHook);
 
         //hook debug layout
-        if (Build.VERSION.SDK_INT < 29) {
-            SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
-            switchProp.addOnPropertyChangeListener(systemPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.os.SystemProperties", classLoader, "getBoolean", String.class, boolean.class, systemPropertiesHook);
-        } else {
-            DisplayProperties displayPropertiesHook = new DisplayProperties();
-            switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", classLoader, "debug_layout", displayPropertiesHook);
-        }
+        switchProp.addOnPropertyChangeListener(new OnDebugLayoutChangeListener());
+
         //Disable show layout margin bound
         XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
 
         //Drag view support
         XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, new DispatchTouchEventHook());
     }
+
+    static final class OnDebugLayoutChangeListener implements Property.OnPropertyChangeListener<Boolean> {
+
+        @Override
+        public void onPropertyChange(Boolean layout) {
+            Logger.d(TAG, String.format("debug layout enable %b", layout));
+            try {
+                @SuppressLint("PrivateApi") Object windowManagerGlobal = XposedHelpers.callStaticMethod(Class.forName("android.view.WindowManagerGlobal"), "getInstance");
+                @SuppressWarnings("rawtypes") ArrayList roots = (ArrayList) XposedHelpers.getObjectField(windowManagerGlobal, "mRoots");
+                @SuppressLint("PrivateApi") final int MSG_INVALIDATE_WORLD = XposedHelpers.getStaticIntField(Class.forName("android.view.ViewRootImpl"), "MSG_INVALIDATE_WORLD");
+                for (Object viewRootImpl : roots) {
+                    Object attachInfo = XposedHelpers.getObjectField(viewRootImpl, "mAttachInfo");
+                    boolean debugLayout = XposedHelpers.getBooleanField(attachInfo, "mDebugLayout");
+                    if (layout != debugLayout) {
+                        XposedHelpers.setBooleanField(attachInfo, "mDebugLayout", layout);
+                        Handler handler = (Handler) XposedHelpers.getObjectField(viewRootImpl, "mHandler");
+                        if (!handler.hasMessages(MSG_INVALIDATE_WORLD)) {
+                            handler.sendEmptyMessageDelayed(MSG_INVALIDATE_WORLD, 200);
+                        }
+                    }
+                }
+            } catch (Throwable tr) {
+                Logger.e(TAG, "debug layout exception", tr);
+            }
+        }
+    }
+
 
 }
