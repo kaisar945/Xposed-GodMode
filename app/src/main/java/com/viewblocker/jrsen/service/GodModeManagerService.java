@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Message;
+import android.os.ParcelFileDescriptor;
 import android.os.RemoteCallbackList;
 import android.os.RemoteException;
 import android.text.TextUtils;
@@ -373,6 +374,18 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         } catch (Exception e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    @Override
+    public ParcelFileDescriptor openFile(String filePath, int mode) throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "open file failed permission deny");
+        try {
+            return ParcelFileDescriptor.open(new File(filePath), mode);
+        } catch (FileNotFoundException e) {
+            RemoteException remoteException = new RemoteException();
+            remoteException.initCause(e);
+            throw remoteException;
         }
     }
 

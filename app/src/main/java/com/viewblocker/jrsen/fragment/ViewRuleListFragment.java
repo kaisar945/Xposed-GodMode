@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -223,7 +224,8 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
 
         @Override
         public List<ViewRule> loadInBackground() {
-            ActRules actRules = GodModeManager.getDefault().getRules(packageName);
+            GodModeManager manager = GodModeManager.getDefault();
+            ActRules actRules = manager.getRules(packageName);
             ArrayList<ViewRule> viewRules = new ArrayList<>();
             for (List<ViewRule> values : actRules.values()) {
                 viewRules.addAll(values);
@@ -236,13 +238,18 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
             }));
             for (ViewRule viewRule : viewRules) {
                 try {
-                    String snapshotFilePath = Preconditions.checkStringNotEmpty(viewRule.imagePath);
-                    Bitmap snapshot = BitmapFactory.decodeFile(snapshotFilePath);
-                    Bitmap thumbnail = Bitmap.createBitmap(snapshot, viewRule.x, viewRule.y, viewRule.width, viewRule.height);
-                    if (thumbnail != snapshot) {
-                        snapshot.recycle();
+                    ParcelFileDescriptor parcelFileDescriptor = manager.openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
+                    Preconditions.checkNotNull(parcelFileDescriptor);
+                    try {
+                        Bitmap snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
+                        Bitmap thumbnail = Bitmap.createBitmap(snapshot, viewRule.x, viewRule.y, viewRule.width, viewRule.height);
+                        if (thumbnail != snapshot) {
+                            snapshot.recycle();
+                        }
+                        viewRule.thumbnail = thumbnail;
+                    } finally {
+                        parcelFileDescriptor.close();
                     }
-                    viewRule.thumbnail = thumbnail;
                 } catch (Exception ignored) {
                 }
             }

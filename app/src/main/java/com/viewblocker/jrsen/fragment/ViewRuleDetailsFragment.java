@@ -6,9 +6,15 @@ import android.graphics.BitmapFactory;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.loader.app.LoaderManager;
+import androidx.loader.content.AsyncTaskLoader;
+import androidx.loader.content.Loader;
 import androidx.preference.DropDownPreference;
 import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
@@ -30,7 +36,7 @@ import java.util.Locale;
  * Created by jrsen on 17-10-29.
  */
 
-public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceChangeListener {
+public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceChangeListener, LoaderManager.LoaderCallbacks<Bitmap> {
 
     private static final String KEY_ALIAS = "alias";
     private static final String KEY_VISIBILITY = "visibility";
@@ -158,12 +164,9 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         dropDownPreference.setValue(String.valueOf(viewRule.visibility));
         preference = dropDownPreference;
         preferenceScreen.addPreference(preference);
-        boolean hasSnapshot = !TextUtils.isEmpty(viewRule.imagePath);
-        if (hasSnapshot) {
-            preference = new ImageViewPreference(context);
-            snapshot = BitmapFactory.decodeFile(viewRule.imagePath);
-            preference.setDefaultValue(snapshot);
-            preferenceScreen.addPreference(preference);
+
+        if (!TextUtils.isEmpty(viewRule.imagePath)) {
+            LoaderManager.getInstance(this).initLoader(0, null, this).forceLoad();
         }
     }
 
@@ -202,4 +205,52 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         return true;
     }
 
+    @NonNull
+    @Override
+    public Loader<Bitmap> onCreateLoader(int id, @Nullable Bundle args) {
+        return new BitmapLoader(requireContext(), viewRule);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<Bitmap> loader, Bitmap data) {
+        if (data != null) {
+            ImageViewPreference preference = new ImageViewPreference(getContext());
+            preference.setDefaultValue(data);
+            getPreferenceScreen().addPreference(preference);
+        }
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<Bitmap> loader) {
+
+    }
+
+    static final class BitmapLoader extends AsyncTaskLoader<Bitmap> {
+
+        final ViewRule viewRule;
+
+        public BitmapLoader(@NonNull Context context, ViewRule viewRule) {
+            super(context);
+            this.viewRule = viewRule;
+        }
+
+        @Nullable
+        @Override
+        public Bitmap loadInBackground() {
+
+            try {
+                ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
+                Preconditions.checkNotNull(parcelFileDescriptor);
+                try {
+                    return BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
+                } finally {
+                    parcelFileDescriptor.close();
+                }
+            } catch (Exception ignore) {
+                return null;
+            }
+        }
+
+
+    }
 }

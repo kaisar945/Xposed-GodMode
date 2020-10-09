@@ -5,6 +5,7 @@ import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.analytics.CrashRecord;
 import android.graphics.Bitmap;
+import android.os.ParcelFileDescriptor;
 
 interface IGodModeManager {
 
@@ -25,5 +26,7 @@ interface IGodModeManager {
     boolean deleteRule(String packageName, in ViewRule viewRule);
 
     boolean deleteRules(String packageName);
+
+    ParcelFileDescriptor openFile(String filePath, int mode);
 
 }

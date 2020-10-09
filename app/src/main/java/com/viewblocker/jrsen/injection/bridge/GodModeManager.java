@@ -2,6 +2,7 @@ package com.viewblocker.jrsen.injection.bridge;
 
 import android.graphics.Bitmap;
 import android.os.IBinder;
+import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 
 import com.viewblocker.jrsen.IGodModeManager;
@@ -113,6 +114,15 @@ public final class GodModeManager {
         } catch (RemoteException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    public ParcelFileDescriptor openFile(String filePath , int mode) {
+        try {
+            return mGMM.openFile(filePath, mode);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
