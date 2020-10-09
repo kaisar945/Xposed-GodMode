@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.widget.TextView;
 
+import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
@@ -77,10 +78,10 @@ public final class ViewHelper {
             String text = (view instanceof TextView) ? Preconditions.optionDefault(((TextView) view).getText(), "").toString() : "";
             String description = Preconditions.optionDefault(view.getContentDescription(), "").toString();
             String viewClass = view.getClass().getName();
-            Logger.i(TAG, "view res name:" + resourceName);
-            Logger.i(TAG, "view text:" + text);
-            Logger.i(TAG, "view description:" + description);
-            Logger.i(TAG, "view class:" + viewClass);
+            Logger.i(TAG, String.format("view res name:%s matched:%b", resourceName, TextUtils.equals(resourceName, rule.resourceName)));
+            Logger.i(TAG, String.format("view text:%s matched:%b", text, TextUtils.equals(text, rule.text)));
+            Logger.i(TAG, String.format("view description:%s matched:%b", description, TextUtils.equals(description, rule.description)));
+            Logger.i(TAG, String.format("view class:%s matched:%b", viewClass, TextUtils.equals(viewClass, rule.viewClass)));
             if (strictMode) {
                 return TextUtils.equals(resourceName, rule.resourceName)
                         && TextUtils.equals(text, rule.text)
@@ -190,7 +191,7 @@ public final class ViewHelper {
             try {
                 resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
             } catch (Resources.NotFoundException ignore) {
-                //可能资源id来自plugin所以找不到
+                //the resource id may be declared in the plugin apk
             }
             String text = (v instanceof TextView && !TextUtils.isEmpty(((TextView) v).getText())) ? ((TextView) v).getText().toString() : "";
             String description = (!TextUtils.isEmpty(v.getContentDescription())) ? v.getContentDescription().toString() : "";
@@ -199,7 +200,7 @@ public final class ViewHelper {
             PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
             String versionName = packageInfo.versionName;
             int versionCode = packageInfo.versionCode;
-            return new ViewRule(packageName, versionName, versionCode, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
+            return new ViewRule(packageName, versionName, versionCode, BuildConfig.VERSION_CODE, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
         } catch (Exception e) {
             return null;
         }

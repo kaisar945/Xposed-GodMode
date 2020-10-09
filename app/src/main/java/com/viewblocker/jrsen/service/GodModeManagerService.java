@@ -1,7 +1,10 @@
 package com.viewblocker.jrsen.service;
 
 
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.graphics.Bitmap;
+import android.os.Binder;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -12,6 +15,7 @@ import android.os.RemoteException;
 import android.text.TextUtils;
 
 import com.google.gson.Gson;
+import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.IGodModeManager;
 import com.viewblocker.jrsen.IObserver;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
@@ -21,18 +25,18 @@ import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
-import org.json.JSONObject;
-
 import java.io.File;
 import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.viewblocker.jrsen.BlockerApplication.TAG;
 import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXG;
@@ -49,49 +53,53 @@ import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXU;
 
 public final class GodModeManagerService extends IGodModeManager.Stub implements Handler.Callback {
 
-    /* /data/godmode */
+    // /data/godmode
     private final static String BASE_DIR = String.format("%s/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
-    /* /data/godmode/conf */
+    // /data/godmode/conf
     private final static String CONFIG_FILE_NAME = "conf";
-    /* /data/godmode/com.tencent.mm/com.tencent.mm.rule */
+    // /data/godmode/package/package.rule
     private final static String RULE_FILE_SUFFIX = ".rule";
 
-    private static final int SET_EDIT_MODE = 0x00001;
     private static final int WRITE_RULE = 0x00002;
     private static final int DELETE_RULE = 0x00004;
     private static final int DELETE_RULES = 0x00008;
     private static final int UPDATE_RULE = 0x000016;
 
-    public static final String CONF_EDIT_MODE = "edit_mode";
-
     private final RemoteCallbackList<ObserverProxy> remoteCallbackList = new RemoteCallbackList<>();
     private final HashMap<String, ActRules> ruleCache = new HashMap<>();
     private Handler handle;
     private boolean inEditMode;
-    private boolean loadSuccess;
+    private boolean started;
+
+    private Context context;
 
     public GodModeManagerService() {
         HandlerThread writerThread = new HandlerThread("writer-thread");
         writerThread.start();
         handle = new Handler(writerThread.getLooper(), this);
-        loadSuccess = loadPreferenceData();
-        //disable edit mode on system up
-        setEditMode(false);
+        try {
+            loadPreferenceData();
+            @SuppressLint("PrivateApi") Class<?> ActivityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = ActivityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field mSystemContextField = ActivityThreadClass.getDeclaredField("mSystemContext");
+            mSystemContextField.setAccessible(true);
+            context = Preconditions.checkNotNull((Context) mSystemContextField.get(activityThread), "system context is null");
+            started = true;
+        } catch (Exception e) {
+            started = false;
+            Logger.e(TAG, "start GodModeManagerService failed", e);
+        }
     }
 
-    private boolean loadPreferenceData() {
-        try {
-            String configFilePath = getConfigFilePath();
-            JSONObject jobject = new JSONObject(FileUtils.readTextFile(configFilePath, 0, null));
-            inEditMode = jobject.optBoolean(CONF_EDIT_MODE, false);
-            File dataDir = new File(getBaseDir());
-            File[] packageDirs = dataDir.listFiles(new FileFilter() {
-                @Override
-                public boolean accept(File pathname) {
-                    return pathname.isDirectory();
-                }
-            });
-            Objects.requireNonNull(packageDirs);
+    private void loadPreferenceData() throws IOException {
+        File dataDir = new File(getBaseDir());
+        File[] packageDirs = dataDir.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isDirectory();
+            }
+        });
+        if (packageDirs != null && packageDirs.length > 0) {
             HashMap<String, ActRules> appRules = new HashMap<>();
             for (File packageDir : packageDirs) {
                 try {
@@ -105,27 +113,12 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                 }
             }
             ruleCache.putAll(appRules);
-            return true;
-        } catch (Exception e) {
-            Logger.e(TAG, "start GodModeManagerService failed", e);
-            return false;
         }
     }
 
     @Override
     public boolean handleMessage(Message msg) {
         switch (msg.what) {
-            case SET_EDIT_MODE: {
-                try {
-                    boolean enable = (boolean) msg.obj;
-                    JSONObject jobject = new JSONObject();
-                    jobject.put(CONF_EDIT_MODE, enable);
-                    FileUtils.stringToFile(getConfigFilePath(), jobject.toString());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            break;
             case WRITE_RULE: {
                 try {
                     Object[] args = (Object[]) msg.obj;
@@ -185,30 +178,42 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                 break;
             }
             default: {
-                //no implements
+                //not implements
             }
             break;
         }
         return true;
     }
 
+    private boolean checkPermission(String permPackage) {
+        int callingUid = Binder.getCallingUid();
+        String[] packagesForUid = context.getPackageManager().getPackagesForUid(callingUid);
+        return packagesForUid != null && Arrays.asList(packagesForUid).contains(permPackage);
+    }
+
+    private void enforcePermission(String permPackage, String message) throws RemoteException {
+        if (!checkPermission(permPackage)) {
+            throw new RemoteException(message);
+        }
+    }
+
     /**
-     * 设置是否显示编辑模式并且通知所有客户端状态改变
-     * !!!该接口会进行身份校验仅允许上帝模式调用
+     * Set edit mode
      *
-     * @param enable true:开启 false:关闭
+     * @param enable enable or disable
      */
     @Override
-    public void setEditMode(boolean enable) {
+    public void setEditMode(boolean enable) throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "can't set edit mode permission deny");
+        if (!started) return;
         inEditMode = enable;
-        handle.obtainMessage(SET_EDIT_MODE, enable).sendToTarget();
         notifyObserverEditModeChanged(enable);
     }
 
     /**
-     * 检查当前是否开启了编辑模式
+     * Check in edit mode
      *
-     * @return true:开启 false:关闭
+     * @return enable or disable
      */
     @Override
     public boolean isInEditMode() {
@@ -216,52 +221,60 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     /**
-     * 注册一个客户端当状态发生变化时通知客户端
+     * Register an observer to be notified when status changed.
      *
-     * @param packageName 客户端包名
-     * @param observer    监视器对象
+     * @param packageName client package name
+     * @param observer    client observer
      */
     @Override
-    public void addObserver(String packageName, IObserver observer) {
-//        if (!started) return;
+    public void addObserver(String packageName, IObserver observer) throws RemoteException {
+        if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
+            throw new RemoteException("can't register observer permission deny");
+        }
+        if (!started) return;
         remoteCallbackList.register(new ObserverProxy(packageName, observer));
     }
 
     /**
-     * 获取所有应用的规则
-     * !!!该接口会进行身份校验仅允许上帝模式调用
+     * Get all packages rules
      *
-     * @return 所有应用规则
+     * @return packages rules
      */
     @Override
-    public Map<String, ActRules> getAllRules() {
-//        if (!started) return Collections.emptyMap();
+    public Map<String, ActRules> getAllRules() throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "can't get all rules permission deny");
+        if (!started) return Collections.emptyMap();
         return ruleCache;
     }
 
     /**
-     * 获取应用包名下的所有规则
-     * !!!该接口会进行身份校验仅允许上帝模式和客户端自己调用
+     * Get rules by package name
      *
-     * @param packageName 应用包名
-     * @return 应用规则
+     * @param packageName package name of the rule
+     * @return rules
      */
     @Override
-    public ActRules getRules(String packageName) {
-//        if (!started) return new ActRules();
+    public ActRules getRules(String packageName) throws RemoteException {
+        if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
+            throw new RemoteException("can't get rules permission deny");
+        }
+        if (!started) return new ActRules();
         return ruleCache.containsKey(packageName) ? ruleCache.get(packageName) : new ActRules();
     }
 
     /**
-     * 写入规则
+     * Write rule
      *
-     * @param packageName 规则包名
-     * @param viewRule    规则
-     * @param snapshot    控件快照
+     * @param packageName package name of the rule
+     * @param viewRule    rule object
+     * @param snapshot    snapshot image of the view
      */
     @Override
-    public boolean writeRule(String packageName, ViewRule viewRule, Bitmap snapshot) {
-//        if (!started) return false;
+    public boolean writeRule(String packageName, ViewRule viewRule, Bitmap snapshot) throws RemoteException {
+        if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
+            throw new RemoteException("can't get rules permission deny");
+        }
+        if (!started) return false;
         try {
             ActRules actRules = ruleCache.get(packageName);
             if (actRules == null) {
@@ -282,15 +295,16 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     /**
-     * 更新规则
+     * Update rule of package
      *
-     * @param packageName 应用包名
-     * @param viewRule    规则
-     * @return true:成功 false:失败
+     * @param packageName package name of the rule
+     * @param viewRule    rule object
+     * @return success or fail
      */
     @Override
-    public boolean updateRule(String packageName, ViewRule viewRule) {
-//        if (!started) return false;
+    public boolean updateRule(String packageName, ViewRule viewRule) throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "can't update rule permission deny");
+        if (!started) return false;
         try {
             ActRules actRules = ruleCache.get(packageName);
             if (actRules == null) {
@@ -316,18 +330,19 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     /**
-     * 删除一条规则
+     * Delete the single rule of package
      *
-     * @param packageName 应用包名
-     * @param viewRule    规则
-     * @return true:成功 false:失败
+     * @param packageName package name of the rule
+     * @param viewRule    rule object
+     * @return success or fail
      */
     @Override
-    public boolean deleteRule(String packageName, ViewRule viewRule) {
-//        if (!started) return false;
+    public boolean deleteRule(String packageName, ViewRule viewRule) throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rule permission deny");
+        if (!started) return false;
         try {
-            ActRules actRules = Objects.requireNonNull(ruleCache.get(packageName), "not found this rule can't delete.");
-            List<ViewRule> viewRules = Objects.requireNonNull(actRules.get(viewRule.activityClass), "not found this rule can't delete.");
+            ActRules actRules = Preconditions.checkNotNull(ruleCache.get(packageName), "not found this rule can't delete.");
+            List<ViewRule> viewRules = Preconditions.checkNotNull(actRules.get(viewRule.activityClass), "not found this rule can't delete.");
             boolean removed = viewRules.remove(viewRule);
             if (removed) {
                 handle.obtainMessage(DELETE_RULE, new Object[]{actRules, packageName, viewRule}).sendToTarget();
@@ -341,14 +356,15 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     /**
-     * 删除应用的所有规则
+     * Delete all rules of package
      *
-     * @param packageName 应用包名
-     * @return true:成功 false:失败
+     * @param packageName package name of the rule
+     * @return success or fail
      */
     @Override
-    public boolean deleteRules(String packageName) {
-//        if (!started) return false;
+    public boolean deleteRules(String packageName) throws RemoteException {
+        enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rules permission deny");
+        if (!started) return false;
         try {
             ruleCache.remove(packageName);
             handle.obtainMessage(DELETE_RULES, packageName).sendToTarget();
@@ -384,8 +400,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                 if (TextUtils.equals(observerProxy.packageName, packageName)) {
                     observerProxy.observer.onViewRuleChanged(actRules);
                 }
-            } catch (RemoteException ignored) {
-//                ignored.printStackTrace();
+            } catch (RemoteException ignore) {
+//                ignore.printStackTrace();
             }
         }
         remoteCallbackList.finishBroadcast();
@@ -396,8 +412,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         for (int i = 0; i < N; i++) {
             try {
                 remoteCallbackList.getBroadcastItem(i).onEditModeChanged(enable);
-            } catch (RemoteException ignored) {
-//                ignored.printStackTrace();
+            } catch (RemoteException ignore) {
+//                ignore.printStackTrace();
             }
         }
         remoteCallbackList.finishBroadcast();

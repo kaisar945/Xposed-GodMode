@@ -10,7 +10,7 @@ import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
-import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -23,14 +23,14 @@ import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 public final class ViewController {
 
-    private static SparseArray<Pair<SoftReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
+    private static SparseArray<Pair<WeakReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
 
     private static void printBlockedViewInfo() {
         Logger.d(TAG, "[BlockedViewCache info start------------------------------------]");
         final int N = blockedViewCache.size();
         for (int i = 0; i < N; i++) {
             int key = blockedViewCache.keyAt(i);
-            Pair<SoftReference<View>, ViewProperty> pair = blockedViewCache.get(key);
+            Pair<WeakReference<View>, ViewProperty> pair = blockedViewCache.get(key);
             Logger.d(TAG, String.format(Locale.getDefault(), "blocked view cache %d=%s\n%s", key, pair.first.get(), pair.second));
         }
         Logger.d(TAG, "[BlockedViewCache info end------------------------------------]");
@@ -41,7 +41,7 @@ public final class ViewController {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
                 Logger.d(TAG, "[Apply rule]:" + rule.toString());
-                Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
+                Pair<WeakReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
                 View view = viewInfo != null ? viewInfo.first.get() : null;
                 if (view == null || ViewHelper.getAttachedActivityFromView(view) != activity) {
                     blockedViewCache.remove(rule.hashCode());
@@ -63,7 +63,7 @@ public final class ViewController {
     }
 
     public static boolean applyRule(View v, ViewRule viewRule) {
-        Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
+        Pair<WeakReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
         View blockedView = viewInfo != null ? viewInfo.first.get() : null;
         if (blockedView == v && v.getVisibility() == viewRule.visibility) {
             return false;
@@ -86,7 +86,7 @@ public final class ViewController {
             v.requestLayout();
         }
         v.setVisibility(viewRule.visibility);
-        blockedViewCache.put(viewRule.hashCode(), Pair.create(new SoftReference<>(v), viewProperty));
+        blockedViewCache.put(viewRule.hashCode(), Pair.create(new WeakReference<View>(v), viewProperty));
         Logger.d(TAG, String.format(Locale.getDefault(), "apply rule add view cache %d=%s", viewRule.hashCode(), v));
         return true;
     }
@@ -95,7 +95,7 @@ public final class ViewController {
         for (ViewRule rule : new ArrayList<>(rules)) {
             try {
                 Logger.d(TAG, "revoke rule:" + rule.toString());
-                Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
+                Pair<WeakReference<View>, ViewProperty> viewInfo = blockedViewCache.get(rule.hashCode());
                 View view = viewInfo != null ? viewInfo.first.get() : null;
                 if (view == null) {
                     Logger.w(TAG, "view cache not found");
@@ -114,7 +114,7 @@ public final class ViewController {
     }
 
     public static void revokeRule(View v, ViewRule viewRule) {
-        Pair<SoftReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
+        Pair<WeakReference<View>, ViewProperty> viewInfo = blockedViewCache.get(viewRule.hashCode());
         if (viewInfo != null && viewInfo.first.get() == v) {
             ViewProperty viewProperty = viewInfo.second;
             v.setAlpha(viewProperty.alpha);

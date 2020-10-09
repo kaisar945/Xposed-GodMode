@@ -26,7 +26,7 @@ import com.viewblocker.jrsen.injection.view.ParticleView;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
-import java.lang.ref.SoftReference;
+import java.lang.ref.WeakReference;
 import java.util.Locale;
 
 import de.robv.android.xposed.XC_MethodHook;
@@ -139,9 +139,9 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         ViewHelper.markViewBounds(snapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
 
         //Make original view invisible
-        Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] start------------------------------------"));
+        Logger.d(TAG, "[ApplyRule] start------------------------------------");
         ViewController.applyRule(v, viewRule);
-        Logger.d(TAG, String.format(Locale.getDefault(), "[ApplyRule] end------------------------------------"));
+        Logger.d(TAG, "[ApplyRule] end------------------------------------");
     }
 
     private void performDetachMirrorView(final View v) {
@@ -205,10 +205,10 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
 
     private class CheckForLongPress implements Runnable {
 
-        private final SoftReference<View> viewRef;
+        private final WeakReference<View> viewRef;
 
         private CheckForLongPress(View view) {
-            this.viewRef = new SoftReference<>(view);
+            this.viewRef = new WeakReference<>(view);
         }
 
         @Override
