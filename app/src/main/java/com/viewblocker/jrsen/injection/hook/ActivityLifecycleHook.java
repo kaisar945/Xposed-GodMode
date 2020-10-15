@@ -2,7 +2,6 @@ package com.viewblocker.jrsen.injection.hook;
 
 import android.app.Activity;
 import android.text.TextUtils;
-import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 
@@ -11,6 +10,7 @@ import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
+import com.viewblocker.jrsen.util.Preconditions;
 
 import java.lang.ref.WeakReference;
 import java.util.List;
@@ -40,16 +40,14 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
         if ("onPostResume".equals(methodName)) {
             if (!sActivities.containsKey(activity)) {
                 OnLayoutChangeListener listener = new OnLayoutChangeListener(activity);
-                decorView.setOnHierarchyChangeListener(listener);
                 decorView.getViewTreeObserver().addOnGlobalLayoutListener(listener);
                 sActivities.put(activity, listener);
             }
             Logger.d("ActivityHook", "resume:" + sActivities);
         } else if ("onDestroy".equals(methodName)) {
             OnLayoutChangeListener listener = sActivities.remove(activity);
-            Logger.d("ActivityHook", "destroy:" + sActivities);
-            decorView.setOnHierarchyChangeListener(null);
             decorView.getViewTreeObserver().removeOnGlobalLayoutListener(listener);
+            Logger.d("ActivityHook", "destroy:" + sActivities);
         }
     }
 
@@ -89,7 +87,7 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
         }
     }
 
-    static final class OnLayoutChangeListener implements ViewTreeObserver.OnGlobalLayoutListener, ViewGroup.OnHierarchyChangeListener {
+    static final class OnLayoutChangeListener implements ViewTreeObserver.OnGlobalLayoutListener {
 
         final WeakReference<Activity> activityReference;
 
@@ -98,23 +96,27 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
         }
 
         @Override
-        public void onChildViewAdded(View parent, View child) {
-            onGlobalLayout();
-        }
-
-        @Override
-        public void onChildViewRemoved(View parent, View child) {
-            onGlobalLayout();
-        }
-
-        @Override
         public void onGlobalLayout() {
-            Activity activity = activityReference.get();
-            List<ViewRule> rules = activity != null ? sActRules.get(activity.getComponentName().getClassName()) : null;
-            if (rules != null && !rules.isEmpty()) {
-                ViewController.applyRuleBatch(activity, rules);
+            // If the change is caused by dragging, it will not be processed.
+            if (DispatchTouchEventHook.isDragging) {
+                return;
+            }
+            Logger.d("ViewBlocker", "onGlobalLayout");
+            applyRuleIfMatchCondition();
+        }
+
+        private void applyRuleIfMatchCondition() {
+            try {
+                Activity activity = Preconditions.checkNotNull(activityReference.get());
+                List<ViewRule> rules = Preconditions.checkNotNull(sActRules.get(activity.getComponentName().getClassName()));
+                if (!rules.isEmpty()) {
+                    ViewController.applyRuleBatch(activity, rules);
+                }
+            } catch (Exception ignore) {
+//                ignore.printStackTrace();
             }
         }
+
     }
 
 }

@@ -1,18 +1,23 @@
-package com.viewblocker.jrsen.injection.view;
+package com.viewblocker.jrsen.injection.weiget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import androidx.annotation.Nullable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import androidx.annotation.Nullable;
+
+import com.viewblocker.jrsen.BuildConfig;
+import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.injection.annotation.DisableHook;
 
 /**
@@ -25,28 +30,35 @@ public final class CancelView extends View {
 
     private final Paint rectPaint = new Paint();
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private CharSequence text = "噢 上帝，原谅这只愚蠢的土拨鼠吧！";
+    private CharSequence text;
     private Rect statusBarBounds = new Rect();
     private Rect textLayoutBounds = new Rect();
     private Rect textBounds = new Rect();
 
     public CancelView(Context context) {
-        super(context);
-        initView();
+        this(context, null);
     }
 
     public CancelView(Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
-        initView();
+        this(context, attrs, 0);
     }
 
     public CancelView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
-        initView();
+        this(context, attrs, defStyleAttr, 0);
     }
 
+    public CancelView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        initWidget(context);
+    }
 
-    private void initView() {
+    private void initWidget(Context context) {
+        try {
+            Resources pluginResource = context.getPackageManager().getResourcesForApplication(BuildConfig.APPLICATION_ID);
+            text = pluginResource.getText(R.string.top_revert_tip);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
         rectPaint.setStyle(Paint.Style.FILL);
         rectPaint.setColor(Color.argb(230, 139, 195, 75));
         textPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15f, getResources().getDisplayMetrics()));

@@ -1,4 +1,4 @@
-package com.viewblocker.jrsen.injection.view;
+package com.viewblocker.jrsen.injection.weiget;
 
 import android.graphics.Bitmap;
 import android.graphics.Point;

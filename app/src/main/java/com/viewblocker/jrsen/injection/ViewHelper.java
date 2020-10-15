@@ -10,6 +10,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +22,9 @@ import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import de.robv.android.xposed.XposedHelpers;
@@ -352,6 +356,41 @@ public final class ViewHelper {
 
     private static int sign(int x) {
         return (x >= 0) ? 1 : -1;
+    }
+
+    public static List<WeakReference<View>> buildViewList(View view) {
+        ArrayList<WeakReference<View>> views = new ArrayList<>();
+        if (view.getVisibility() == View.VISIBLE) {
+            views.add(new WeakReference<>(view));
+            if (view instanceof ViewGroup) {
+                final int N = ((ViewGroup) view).getChildCount();
+                for (int i = 0; i < N; i++) {
+                    View childView = ((ViewGroup) view).getChildAt(i);
+                    views.addAll(buildViewList(childView));
+                }
+            }
+        }
+        return views;
+    }
+
+    public static Rect getLocationInWindow(View v) {
+        int[] out = new int[2];
+        v.getLocationInWindow(out);
+        int l = out[0];
+        int t = out[1];
+        int r = l + v.getWidth();
+        int b = t + v.getHeight();
+        return new Rect(l, t, r, b);
+    }
+
+    public static Rect getLocationOnScreen(View v) {
+        int[] out = new int[2];
+        v.getLocationOnScreen(out);
+        int l = out[0];
+        int t = out[1];
+        int r = l + v.getWidth();
+        int b = t + v.getHeight();
+        return new Rect(l, t, r, b);
     }
 
 }
