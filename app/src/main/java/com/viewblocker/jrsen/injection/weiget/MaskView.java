@@ -1,5 +1,6 @@
 package com.viewblocker.jrsen.injection.weiget;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -23,8 +24,8 @@ import com.viewblocker.jrsen.injection.annotation.DisableHook;
 @DisableHook
 public final class MaskView extends View {
 
-    private static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
-    private static final int SELECT_COLOR = Color.argb(150, 255, 0, 0);
+    public static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
+    public static final int SELECT_COLOR = Color.argb(150, 255, 0, 0);
     private boolean isMarked;
 
     public MaskView(Context context) {
@@ -104,7 +105,9 @@ public final class MaskView extends View {
 
     public void detachFromContainer() {
         ViewGroup parent = (ViewGroup) getParent();
-        parent.removeView(this);
+        if (parent != null) {
+            parent.removeView(this);
+        }
     }
 
     public static MaskView clone(View view) {
@@ -123,7 +126,6 @@ public final class MaskView extends View {
 
     public static MaskView mask(View view) {
         MaskView maskView = new MaskView(view.getContext());
-        maskView.setBackgroundColor(SELECT_COLOR);
         ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(view.getWidth(), view.getHeight());
         maskView.setLayoutParams(layoutParams);
 
