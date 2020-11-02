@@ -2,34 +2,38 @@
 
     <PreferenceCategory android:title="@string/pref_header_general">
         <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="editor_switch"
-            android:summary="@string/pref_description_god_mode"
-            android:title="@string/pref_title_god_mode" />
+                android:defaultValue="false"
+                android:icon="@drawable/ic_puzzle"
+                android:key="editor_switch"
+                android:summary="@string/pref_description_god_mode"
+                android:title="@string/pref_title_god_mode" />
         <CheckBoxPreference
-            android:defaultValue="false"
-            android:key="quick_setting"
-            android:summary="@string/pref_description_quick_setting"
-            android:title="@string/pref_title_quick_setting" />
+                android:defaultValue="false"
+                android:icon="@drawable/ic_setting"
+                android:key="quick_setting"
+                android:summary="@string/pref_description_quick_setting"
+                android:title="@string/pref_title_quick_setting" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/pref_header_support">
 
         <Preference
-            android:key="group_qrcode"
-            android:summary="@string/pref_description_add_group"
-            android:title="@string/pref_title_add_group" />
+                android:icon="@drawable/ic_people"
+                android:key="group_qrcode"
+                android:summary="@string/pref_description_add_group"
+                android:title="@string/pref_title_add_group" />
 
         <Preference
-            android:key="donate"
-            android:summary="@string/pref_description_donate_me"
-            android:title="@string/pref_title_donate_me" />
+                android:icon="@drawable/ic_donate"
+                android:key="donate"
+                android:summary="@string/pref_description_donate_me"
+                android:title="@string/pref_title_donate_me" />
 
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:key="app_rules"
-        android:title="@string/pref_header_app_rules">
+            android:key="app_rules"
+            android:title="@string/pref_header_app_rules">
 
     </PreferenceCategory>
 
