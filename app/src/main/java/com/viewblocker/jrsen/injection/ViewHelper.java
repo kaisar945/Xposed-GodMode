@@ -37,6 +37,8 @@ import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 public final class ViewHelper {
 
+    public static final String TAG_GM_CMP = "gm_cmp";
+
     public static View findViewBestMatch(Activity activity, ViewRule rule) {
         // if the rule version and the application version are the same, use strict mode.
         boolean strictMode = false;
@@ -176,38 +178,35 @@ public final class ViewHelper {
         return depth;
     }
 
-    public static ViewRule makeRule(View v) {
-        try {
-            Activity activity = Objects.requireNonNull(getAttachedActivityFromView(v));
-            int[] out = new int[2];
-            v.getLocationInWindow(out);
-            int x = out[0];
-            int y = out[1];
-            int width = v.getWidth();
-            int height = v.getHeight();
+    public static ViewRule makeRule(View v) throws PackageManager.NameNotFoundException {
+        Activity activity = getAttachedActivityFromView(v);
+        Objects.requireNonNull(activity, "Can't found attached activity");
+        int[] out = new int[2];
+        v.getLocationInWindow(out);
+        int x = out[0];
+        int y = out[1];
+        int width = v.getWidth();
+        int height = v.getHeight();
 
-            int[] viewHierarchyDepth = getViewHierarchyDepth(v);
-            String activityClassName = activity.getComponentName().getClassName();
-            String viewClassName = v.getClass().getName();
-            Context context = v.getContext();
-            Resources res = context.getResources();
-            String resourceName = null;
-            try {
-                resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
-            } catch (Resources.NotFoundException ignore) {
-                //the resource id may be declared in the plugin apk
-            }
-            String text = (v instanceof TextView && !TextUtils.isEmpty(((TextView) v).getText())) ? ((TextView) v).getText().toString() : "";
-            String description = (!TextUtils.isEmpty(v.getContentDescription())) ? v.getContentDescription().toString() : "";
-            String alias = !TextUtils.isEmpty(text) ? text : description;
-            String packageName = context.getPackageName();
-            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
-            String versionName = packageInfo.versionName;
-            int versionCode = packageInfo.versionCode;
-            return new ViewRule(packageName, versionName, versionCode, BuildConfig.VERSION_CODE, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
-        } catch (Exception e) {
-            return null;
+        int[] viewHierarchyDepth = getViewHierarchyDepth(v);
+        String activityClassName = activity.getComponentName().getClassName();
+        String viewClassName = v.getClass().getName();
+        Context context = v.getContext();
+        Resources res = context.getResources();
+        String resourceName = null;
+        try {
+            resourceName = v.getId() != View.NO_ID ? res.getResourceName(v.getId()) : null;
+        } catch (Resources.NotFoundException ignore) {
+            //the resource id may be declared in the plugin apk
         }
+        String text = (v instanceof TextView && !TextUtils.isEmpty(((TextView) v).getText())) ? ((TextView) v).getText().toString() : "";
+        String description = (!TextUtils.isEmpty(v.getContentDescription())) ? v.getContentDescription().toString() : "";
+        String alias = !TextUtils.isEmpty(text) ? text : description;
+        String packageName = context.getPackageName();
+        PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
+        String versionName = packageInfo.versionName;
+        int versionCode = packageInfo.versionCode;
+        return new ViewRule(packageName, versionName, versionCode, BuildConfig.VERSION_CODE, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
     }
 
     public static Bitmap markViewBounds(Bitmap bitmap, int left, int top, int right, int bottom) {
@@ -358,15 +357,15 @@ public final class ViewHelper {
         return (x >= 0) ? 1 : -1;
     }
 
-    public static List<WeakReference<View>> buildViewList(View view) {
+    public static List<WeakReference<View>> buildViewNodes(View view) {
         ArrayList<WeakReference<View>> views = new ArrayList<>();
-        if (view.getVisibility() == View.VISIBLE) {
+        if (view.getVisibility() == View.VISIBLE && !TAG_GM_CMP.equals(view.getTag())) {
             views.add(new WeakReference<>(view));
             if (view instanceof ViewGroup) {
                 final int N = ((ViewGroup) view).getChildCount();
                 for (int i = 0; i < N; i++) {
                     View childView = ((ViewGroup) view).getChildAt(i);
-                    views.addAll(buildViewList(childView));
+                    views.addAll(buildViewNodes(childView));
                 }
             }
         }

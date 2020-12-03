@@ -2,6 +2,7 @@ package com.viewblocker.jrsen.injection.hook;
 
 import android.animation.Animator;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
@@ -31,6 +32,7 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
 import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 /**
  * Created by jrsen on 17-12-6.
@@ -54,8 +56,11 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
-        if (BlockerInjector.switchProp.get()) {
-            param.setResult(dispatchTouchEvent((View) param.thisObject, (MotionEvent) param.args[0]));
+        View view = (View) param.thisObject;
+        MotionEvent event = (MotionEvent) param.args[0];
+
+        if (BlockerInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
+            param.setResult(dispatchTouchEvent(view, event));
         }
     }
 
@@ -86,7 +91,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             float x = event.getX();
             float y = event.getY();
             if (isLongClick) {
-                maskView.updatePosition((int) (event.getRawX() - this.x), (int) (event.getRawY() - this.y));
+                maskView.updateBounds((int) (event.getRawX() - this.x), (int) (event.getRawY() - this.y), v.getWidth(), v.getHeight());
                 Logger.i(TAG, "cancel bounds:" + cancelView.getRealBounds() + " mask bounds:" + maskView.getRealBounds());
                 maskView.setMarked(cancelView.getRealBounds().intersect(maskView.getRealBounds()));
             } else if (x < 0 || x > v.getWidth() || y < 0 || y > v.getHeight()) {
@@ -115,31 +120,29 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
     }
 
     private void performAttachMirrorView(View v) {
-        //Create mirror view and attach top view hierarchy
-        Activity activity = ViewHelper.getAttachedActivityFromView(v);
         try {
-            Preconditions.checkNotNull(activity);
-        } catch (NullPointerException e) {
-            return;
+            //Create mirror view and attach top view hierarchy
+            Activity activity = Preconditions.checkNotNull(ViewHelper.getAttachedActivityFromView(v));
+
+            ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
+
+            cancelView = new CancelView(v.getContext());
+            cancelView.attachToContainer(container);
+
+            maskView = MaskView.clone(v);
+            maskView.attachToContainer(container);
+
+            viewRule = ViewHelper.makeRule(v);
+
+            snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
+
+            //Make original view invisible
+            Logger.d(TAG, "[ApplyRule] start------------------------------------");
+            ViewController.applyRule(v, viewRule);
+            Logger.d(TAG, "[ApplyRule] end------------------------------------");
+        } catch (PackageManager.NameNotFoundException | NullPointerException e) {
+            e.printStackTrace();
         }
-
-        ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
-
-        cancelView = new CancelView(v.getContext());
-        cancelView.attachToContainer(container);
-
-        maskView = MaskView.clone(v);
-        maskView.attachToContainer(container);
-
-        viewRule = ViewHelper.makeRule(v);
-
-        snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
-        ViewHelper.markViewBounds(snapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
-
-        //Make original view invisible
-        Logger.d(TAG, "[ApplyRule] start------------------------------------");
-        ViewController.applyRule(v, viewRule);
-        Logger.d(TAG, "[ApplyRule] end------------------------------------");
     }
 
     private void performDetachMirrorView(final View v) {
@@ -175,7 +178,8 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
-            final ParticleView particleView = new ParticleView(activity, 1000);
+            final ParticleView particleView = new ParticleView(activity);
+            particleView.setDuration(1000);
             particleView.attachToContainer(container);
             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                 @Override

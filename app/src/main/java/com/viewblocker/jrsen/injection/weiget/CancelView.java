@@ -2,8 +2,6 @@ package com.viewblocker.jrsen.injection.weiget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -16,15 +14,15 @@ import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
 
-import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.R;
-import com.viewblocker.jrsen.injection.annotation.DisableHook;
+import com.viewblocker.jrsen.injection.util.GmResources;
+
+import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 /**
  * Created by jrsen on 17-11-4.
  */
 
-@DisableHook
 @SuppressLint("AppCompatCustomView")
 public final class CancelView extends View {
 
@@ -49,16 +47,12 @@ public final class CancelView extends View {
 
     public CancelView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
+        setTag(TAG_GM_CMP);
         initWidget(context);
     }
 
     private void initWidget(Context context) {
-        try {
-            Resources pluginResource = context.getPackageManager().getResourcesForApplication(BuildConfig.APPLICATION_ID);
-            text = pluginResource.getText(R.string.top_revert_tip);
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
+        text = GmResources.getText(context, R.string.top_revert_tip);
         rectPaint.setStyle(Paint.Style.FILL);
         rectPaint.setColor(Color.argb(230, 139, 195, 75));
         textPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15f, getResources().getDisplayMetrics()));

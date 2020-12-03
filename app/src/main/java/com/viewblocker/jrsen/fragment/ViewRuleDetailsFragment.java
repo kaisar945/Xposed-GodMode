@@ -22,6 +22,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
+import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.preference.ImageViewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
@@ -46,7 +47,6 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     private CharSequence label;
     private CharSequence packageName;
     private ViewRule viewRule;
-    private Bitmap snapshot;
     private AdapterDataObserver<ViewRule> dataObserver;
 
     public void setIndex(int index) {
@@ -179,9 +179,6 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (Preconditions.checkBitmap(snapshot)) {
-            snapshot.recycle();
-        }
         dataObserver = null;
     }
 
@@ -208,7 +205,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @NonNull
     @Override
     public Loader<Bitmap> onCreateLoader(int id, @Nullable Bundle args) {
-        return new BitmapLoader(requireContext(), viewRule);
+        return new ImageLoader(requireContext(), viewRule);
     }
 
     @Override
@@ -225,11 +222,11 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
     }
 
-    static final class BitmapLoader extends AsyncTaskLoader<Bitmap> {
+    static final class ImageLoader extends AsyncTaskLoader<Bitmap> {
 
         final ViewRule viewRule;
 
-        public BitmapLoader(@NonNull Context context, ViewRule viewRule) {
+        public ImageLoader(@NonNull Context context, ViewRule viewRule) {
             super(context);
             this.viewRule = viewRule;
         }
@@ -237,12 +234,13 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         @Nullable
         @Override
         public Bitmap loadInBackground() {
-
             try {
                 ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
                 Preconditions.checkNotNull(parcelFileDescriptor);
                 try {
-                    return BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
+                    Bitmap bitmap = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
+                    ViewHelper.markViewBounds(bitmap, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
+                    return bitmap;
                 } finally {
                     parcelFileDescriptor.close();
                 }

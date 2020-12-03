@@ -9,15 +9,16 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
-import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.kaisar.xservicemanager.XServiceManager;
 import com.viewblocker.jrsen.BuildConfig;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.bridge.ManagerObserver;
@@ -29,12 +30,12 @@ import com.viewblocker.jrsen.injection.util.PackageManagerUtils;
 import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.service.GodModeManagerService;
-import com.viewblocker.jrsen.service.XServiceManager;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -63,13 +64,13 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
             case "android":
                 // 注册系统服务
                 Logger.i(TAG, "inject GodModeManagerService as system service.");
-                XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<IBinder>() {
+                XServiceManager.initForSystemServer();
+                XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<Binder>() {
                     @Override
-                    public IBinder createService(Context ctx) {
-                        return new GodModeManagerService();
+                    public Binder createService(Context ctx) {
+                        return new GodModeManagerService(ctx);
                     }
                 });
-                XServiceManager.initManager();
                 break;
             case BuildConfig.APPLICATION_ID:
                 //检测上帝模式模块是否开启
@@ -153,8 +154,23 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         //Disable show layout margin bound
         XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
 
+        //Disable GM component show layout bounds
+        XC_MethodHook disableDebugDraw = new XC_MethodHook() {
+            @Override
+            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                View view = (View) param.thisObject;
+                if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
+                    param.setResult(null);
+                }
+            }
+        };
+        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
+        XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
+
         //Volume key select
-        XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, new DispatchKeyEventHook());
+        DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
+        XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, dispatchKeyEventHook);
+        BlockerInjector.switchProp.addOnPropertyChangeListener(dispatchKeyEventHook);
 
         //Drag view support
         XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, new DispatchTouchEventHook());

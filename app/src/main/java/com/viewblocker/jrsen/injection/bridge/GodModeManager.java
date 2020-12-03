@@ -5,11 +5,11 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 
+import com.kaisar.xservicemanager.XServiceManager;
 import com.viewblocker.jrsen.IGodModeManager;
 import com.viewblocker.jrsen.IObserver;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.service.XServiceManager;
 
 import java.util.Collections;
 import java.util.Map;

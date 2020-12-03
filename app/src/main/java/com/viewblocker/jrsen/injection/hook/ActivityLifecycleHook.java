@@ -98,7 +98,7 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
         @Override
         public void onGlobalLayout() {
             // If the change is caused by dragging, it will not be processed.
-            if (DispatchTouchEventHook.isDragging || DispatchKeyEventHook.isSelecting) {
+            if (DispatchTouchEventHook.isDragging || DispatchKeyEventHook.selecting) {
                 return;
             }
             Logger.d("ViewBlocker", "onGlobalLayout");

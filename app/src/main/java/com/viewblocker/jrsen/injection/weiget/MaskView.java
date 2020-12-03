@@ -1,13 +1,11 @@
 package com.viewblocker.jrsen.injection.weiget;
 
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,17 +13,17 @@ import android.view.ViewGroup;
 import androidx.annotation.Nullable;
 
 import com.viewblocker.jrsen.injection.ViewHelper;
-import com.viewblocker.jrsen.injection.annotation.DisableHook;
+
+import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 /**
  * Created by jrsen on 17-10-13.
  */
 
-@DisableHook
 public final class MaskView extends View {
 
-    public static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
-    public static final int SELECT_COLOR = Color.argb(150, 255, 0, 0);
+    private static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
+    private static final int SELECT_COLOR = Color.argb(150, 255, 0, 0);
     private boolean isMarked;
 
     public MaskView(Context context) {
@@ -42,22 +40,20 @@ public final class MaskView extends View {
 
     public MaskView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
+        setTag(TAG_GM_CMP);
     }
 
-    public void updatePosition(int newX, int newY) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) getLayoutParams();
-        layoutParams.leftMargin = newX;
-        layoutParams.topMargin = newY;
-        requestLayout();
-    }
-
-    public void updatePosition(int x, int y, int w, int h) {
+    public void updateBounds(int x, int y, int w, int h) {
         ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) getLayoutParams();
         layoutParams.width = w;
         layoutParams.height = h;
         layoutParams.leftMargin = x;
         layoutParams.topMargin = y;
         requestLayout();
+    }
+
+    public void updateBounds(Rect bounds) {
+        updateBounds(bounds.left, bounds.top, bounds.width(), bounds.height());
     }
 
     private Rect bounds = new Rect();
@@ -87,10 +83,10 @@ public final class MaskView extends View {
     public void setSelected(boolean selected) {
         if (selected != isSelected()) {
             super.setSelected(selected);
-            if (isSelected()) {
-                getBackground().setColorFilter(SELECT_COLOR, PorterDuff.Mode.SRC_ATOP);
+            if (selected) {
+                setBackgroundColor(SELECT_COLOR);
             } else {
-                getBackground().clearColorFilter();
+                setBackgroundColor(Color.TRANSPARENT);
             }
         }
     }
@@ -110,28 +106,32 @@ public final class MaskView extends View {
         }
     }
 
-    public static MaskView clone(View view) {
+    public void inflateView(View view) {
         Bitmap bitmap = ViewHelper.cloneViewAsBitmap(view);
-        Drawable drawable = new BitmapDrawable(view.getResources(), bitmap);
-        MaskView maskView = new MaskView(view.getContext());
-        maskView.setBackground(drawable);
-        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(bitmap.getWidth(), bitmap.getHeight());
-        maskView.setLayoutParams(layoutParams);
+        setBackground(new BitmapDrawable(getResources(), bitmap));
+    }
 
+    public static MaskView clone(View view) {
+        MaskView maskView = new MaskView(view.getContext());
+        maskView.inflateView(view);
+        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(view.getWidth(), view.getHeight());
         int[] out = new int[2];
         view.getLocationOnScreen(out);
-        maskView.updatePosition(out[0], out[1]);
+        layoutParams.leftMargin = out[0];
+        layoutParams.topMargin = out[1];
+        maskView.setLayoutParams(layoutParams);
         return maskView;
     }
 
     public static MaskView mask(View view) {
         MaskView maskView = new MaskView(view.getContext());
+        maskView.setSelected(true);
         ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(view.getWidth(), view.getHeight());
-        maskView.setLayoutParams(layoutParams);
-
         int[] out = new int[2];
-        view.getLocationInWindow(out);
-        maskView.updatePosition(out[0], out[1]);
+        view.getLocationOnScreen(out);
+        layoutParams.leftMargin = out[0];
+        layoutParams.topMargin = out[1];
+        maskView.setLayoutParams(layoutParams);
         return maskView;
     }
 

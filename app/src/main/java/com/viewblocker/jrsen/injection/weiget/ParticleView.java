@@ -13,17 +13,18 @@ import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.viewblocker.jrsen.injection.annotation.DisableHook;
+import androidx.annotation.Nullable;
+
+import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 /**
  * Created by jrsen on 17-10-13.
  */
-@DisableHook
 public final class ParticleView extends View {
 
     private ValueAnimator mParticleAnimator;
     //动画持续时间
-    public int DURATION = 4000;
+    public int duration = 4000;
     //动画监听
     private OnAnimationListener mOnAnimationListener;
     //画笔
@@ -36,26 +37,24 @@ public final class ParticleView extends View {
     }
 
     public ParticleView(Context context) {
-        super(context);
-        init();
+        this(context, null);
     }
 
-    /**
-     * @param context
-     * @param durtion 动画时间
-     */
-    public ParticleView(Context context, int durtion) {
-        super(context);
-        this.DURATION = durtion;
-        init();
+    public ParticleView(Context context, @Nullable AttributeSet attrs) {
+        this(context, attrs, 0);
     }
 
-    public ParticleView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
+    public ParticleView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        this(context, attrs, defStyleAttr, 0);
     }
 
-    private void init() {
+    public ParticleView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        setTag(TAG_GM_CMP);
+        initWidget();
+    }
+
+    private void initWidget() {
         mPaint = new Paint();
     }
 
@@ -90,7 +89,7 @@ public final class ParticleView extends View {
 
                 mParticles = Particle.generateParticles(getCacheBitmapFromView(view), rect);
                 mParticleAnimator = ValueAnimator.ofFloat(0.0f, 1.0f);
-                mParticleAnimator.setDuration(DURATION);
+                mParticleAnimator.setDuration(duration);
                 mParticleAnimator.addListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationStart(Animator animation) {
@@ -134,6 +133,10 @@ public final class ParticleView extends View {
             bitmap = null;
         }
         return bitmap;
+    }
+
+    public void setDuration(int duration) {
+        this.duration = duration;
     }
 
     public void attachToContainer(ViewGroup container) {

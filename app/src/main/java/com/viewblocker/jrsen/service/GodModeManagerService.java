@@ -1,7 +1,6 @@
 package com.viewblocker.jrsen.service;
 
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Binder;
@@ -31,7 +30,6 @@ import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,28 +64,23 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private static final int DELETE_RULES = 0x00008;
     private static final int UPDATE_RULE = 0x000016;
 
-    private final RemoteCallbackList<ObserverProxy> remoteCallbackList = new RemoteCallbackList<>();
-    private final HashMap<String, ActRules> ruleCache = new HashMap<>();
-    private Handler handle;
-    private boolean inEditMode;
-    private boolean started;
+    private final RemoteCallbackList<ObserverProxy> mRemoteCallbackList = new RemoteCallbackList<>();
+    private final HashMap<String, ActRules> mRuleCache = new HashMap<>();
+    private final Context mContext;
+    private final Handler mHandle;
+    private boolean mInEditMode;
+    private boolean mStarted;
 
-    private Context context;
-
-    public GodModeManagerService() {
-        HandlerThread writerThread = new HandlerThread("writer-thread");
-        writerThread.start();
-        handle = new Handler(writerThread.getLooper(), this);
+    public GodModeManagerService(Context context) {
+        mContext = context;
+        HandlerThread workThread = new HandlerThread("work-thread");
+        workThread.start();
+        mHandle = new Handler(workThread.getLooper(), this);
         try {
             loadPreferenceData();
-            @SuppressLint("PrivateApi") Class<?> ActivityThreadClass = Class.forName("android.app.ActivityThread");
-            Object activityThread = ActivityThreadClass.getMethod("currentActivityThread").invoke(null);
-            Field mSystemContextField = ActivityThreadClass.getDeclaredField("mSystemContext");
-            mSystemContextField.setAccessible(true);
-            context = Preconditions.checkNotNull((Context) mSystemContextField.get(activityThread), "system context is null");
-            started = true;
+            mStarted = true;
         } catch (Exception e) {
-            started = false;
+            mStarted = false;
             Logger.e(TAG, "start GodModeManagerService failed", e);
         }
     }
@@ -113,7 +106,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                     e.printStackTrace();
                 }
             }
-            ruleCache.putAll(appRules);
+            mRuleCache.putAll(appRules);
         }
     }
 
@@ -188,7 +181,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
 
     private boolean checkPermission(String permPackage) {
         int callingUid = Binder.getCallingUid();
-        String[] packagesForUid = context.getPackageManager().getPackagesForUid(callingUid);
+        String[] packagesForUid = mContext.getPackageManager().getPackagesForUid(callingUid);
         return packagesForUid != null && Arrays.asList(packagesForUid).contains(permPackage);
     }
 
@@ -206,8 +199,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public void setEditMode(boolean enable) throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "can't set edit mode permission deny");
-        if (!started) return;
-        inEditMode = enable;
+        if (!mStarted) return;
+        mInEditMode = enable;
         notifyObserverEditModeChanged(enable);
     }
 
@@ -218,7 +211,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean isInEditMode() {
-        return inEditMode;
+        return mInEditMode;
     }
 
     /**
@@ -232,8 +225,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
             throw new RemoteException("can't register observer permission deny");
         }
-        if (!started) return;
-        remoteCallbackList.register(new ObserverProxy(packageName, observer));
+        if (!mStarted) return;
+        mRemoteCallbackList.register(new ObserverProxy(packageName, observer));
     }
 
     /**
@@ -244,8 +237,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public Map<String, ActRules> getAllRules() throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "can't get all rules permission deny");
-        if (!started) return Collections.emptyMap();
-        return ruleCache;
+        if (!mStarted) return Collections.emptyMap();
+        return mRuleCache;
     }
 
     /**
@@ -259,8 +252,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
             throw new RemoteException("can't get rules permission deny");
         }
-        if (!started) return new ActRules();
-        return ruleCache.containsKey(packageName) ? ruleCache.get(packageName) : new ActRules();
+        if (!mStarted) return new ActRules();
+        return mRuleCache.containsKey(packageName) ? mRuleCache.get(packageName) : new ActRules();
     }
 
     /**
@@ -275,18 +268,18 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
             throw new RemoteException("can't get rules permission deny");
         }
-        if (!started) return false;
+        if (!mStarted) return false;
         try {
-            ActRules actRules = ruleCache.get(packageName);
+            ActRules actRules = mRuleCache.get(packageName);
             if (actRules == null) {
-                ruleCache.put(packageName, actRules = new ActRules());
+                mRuleCache.put(packageName, actRules = new ActRules());
             }
             List<ViewRule> viewRules = actRules.get(viewRule.activityClass);
             if (viewRules == null) {
                 actRules.put(viewRule.activityClass, viewRules = new ArrayList<>());
             }
             viewRules.add(viewRule);
-            handle.obtainMessage(WRITE_RULE, new Object[]{actRules, packageName, viewRule, snapshot}).sendToTarget();
+            mHandle.obtainMessage(WRITE_RULE, new Object[]{actRules, packageName, viewRule, snapshot}).sendToTarget();
             notifyObserverRuleChanged(packageName, actRules);
             return true;
         } catch (Exception e) {
@@ -305,11 +298,11 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public boolean updateRule(String packageName, ViewRule viewRule) throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "can't update rule permission deny");
-        if (!started) return false;
+        if (!mStarted) return false;
         try {
-            ActRules actRules = ruleCache.get(packageName);
+            ActRules actRules = mRuleCache.get(packageName);
             if (actRules == null) {
-                ruleCache.put(packageName, actRules = new ActRules());
+                mRuleCache.put(packageName, actRules = new ActRules());
             }
             List<ViewRule> viewRules = actRules.get(viewRule.activityClass);
             if (viewRules == null) {
@@ -321,7 +314,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             } else {
                 viewRules.add(viewRule);
             }
-            handle.obtainMessage(UPDATE_RULE, new Object[]{actRules, packageName}).sendToTarget();
+            mHandle.obtainMessage(UPDATE_RULE, new Object[]{actRules, packageName}).sendToTarget();
             notifyObserverRuleChanged(packageName, actRules);
             return true;
         } catch (Exception e) {
@@ -340,13 +333,13 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public boolean deleteRule(String packageName, ViewRule viewRule) throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rule permission deny");
-        if (!started) return false;
+        if (!mStarted) return false;
         try {
-            ActRules actRules = Preconditions.checkNotNull(ruleCache.get(packageName), "not found this rule can't delete.");
+            ActRules actRules = Preconditions.checkNotNull(mRuleCache.get(packageName), "not found this rule can't delete.");
             List<ViewRule> viewRules = Preconditions.checkNotNull(actRules.get(viewRule.activityClass), "not found this rule can't delete.");
             boolean removed = viewRules.remove(viewRule);
             if (removed) {
-                handle.obtainMessage(DELETE_RULE, new Object[]{actRules, packageName, viewRule}).sendToTarget();
+                mHandle.obtainMessage(DELETE_RULE, new Object[]{actRules, packageName, viewRule}).sendToTarget();
                 notifyObserverRuleChanged(packageName, actRules);
             }
             return removed;
@@ -365,10 +358,10 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public boolean deleteRules(String packageName) throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rules permission deny");
-        if (!started) return false;
+        if (!mStarted) return false;
         try {
-            ruleCache.remove(packageName);
-            handle.obtainMessage(DELETE_RULES, packageName).sendToTarget();
+            mRuleCache.remove(packageName);
+            mHandle.obtainMessage(DELETE_RULES, packageName).sendToTarget();
             notifyObserverRuleChanged(packageName, new ActRules());
             return true;
         } catch (Exception e) {
@@ -406,10 +399,10 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     private void notifyObserverRuleChanged(String packageName, ActRules actRules) {
-        final int N = remoteCallbackList.beginBroadcast();
+        final int N = mRemoteCallbackList.beginBroadcast();
         for (int i = 0; i < N; i++) {
             try {
-                ObserverProxy observerProxy = remoteCallbackList.getBroadcastItem(i);
+                ObserverProxy observerProxy = mRemoteCallbackList.getBroadcastItem(i);
                 if (TextUtils.equals(observerProxy.packageName, packageName)) {
                     observerProxy.observer.onViewRuleChanged(actRules);
                 }
@@ -417,19 +410,19 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
 //                ignore.printStackTrace();
             }
         }
-        remoteCallbackList.finishBroadcast();
+        mRemoteCallbackList.finishBroadcast();
     }
 
     private void notifyObserverEditModeChanged(boolean enable) {
-        final int N = remoteCallbackList.beginBroadcast();
+        final int N = mRemoteCallbackList.beginBroadcast();
         for (int i = 0; i < N; i++) {
             try {
-                remoteCallbackList.getBroadcastItem(i).onEditModeChanged(enable);
+                mRemoteCallbackList.getBroadcastItem(i).onEditModeChanged(enable);
             } catch (RemoteException ignore) {
 //                ignore.printStackTrace();
             }
         }
-        remoteCallbackList.finishBroadcast();
+        mRemoteCallbackList.finishBroadcast();
     }
 
     private String getBaseDir() throws FileNotFoundException {
