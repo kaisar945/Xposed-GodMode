@@ -87,6 +87,6 @@
     <string name="block_fail">屏蔽失败:%1$s</string>
 
     <string name="accessibility_block">屏蔽</string>
-    <string name="tag_gm_cmp">gm_cmp</string>
+    <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
 
 </resources>
