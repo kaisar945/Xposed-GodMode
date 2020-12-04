@@ -1,6 +1,5 @@
 package com.viewblocker.jrsen.injection;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -11,7 +10,6 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.os.Binder;
 import android.os.Build;
-import android.os.Handler;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -25,13 +23,14 @@ import com.viewblocker.jrsen.injection.bridge.ManagerObserver;
 import com.viewblocker.jrsen.injection.hook.ActivityLifecycleHook;
 import com.viewblocker.jrsen.injection.hook.DispatchKeyEventHook;
 import com.viewblocker.jrsen.injection.hook.DispatchTouchEventHook;
+import com.viewblocker.jrsen.injection.hook.DisplayPropertiesHook;
+import com.viewblocker.jrsen.injection.hook.SystemPropertiesHook;
 import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.util.PackageManagerUtils;
 import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.service.GodModeManagerService;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
@@ -40,29 +39,39 @@ import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 
 /**
  * Created by jrsen on 17-10-13.
  */
 
-public final class BlockerInjector implements IXposedHookLoadPackage {
+public final class GodModeInjector implements IXposedHookLoadPackage {
 
-    public static Property<Boolean> switchProp = new Property<>();
-    public static Property<ActRules> actRuleProp = new Property<>();
+    public final static Property<Boolean> switchProp = new Property<>();
+    public final static Property<ActRules> actRuleProp = new Property<>();
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
+
+    public static void notifyEditModeChanged(boolean enable) {
+        if (!checkBlockList(loadPackageParam.packageName)) {
+            switchProp.set(enable);
+        }
+    }
+
+    public static void notifyViewRulesChanged(ActRules actRules) {
+        actRuleProp.set(actRules);
+    }
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) {
         if (!loadPackageParam.isFirstApplication) {
             return;
         }
-        BlockerInjector.loadPackageParam = loadPackageParam;
+        GodModeInjector.loadPackageParam = loadPackageParam;
         final String packageName = loadPackageParam.packageName;
         switch (packageName) {
             case "android":
-                // 注册系统服务
+                // running in system_server process for register GodMode service
                 Logger.i(TAG, "inject GodModeManagerService as system service.");
                 XServiceManager.initForSystemServer();
                 XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<Binder>() {
@@ -73,10 +82,11 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
                 });
                 break;
             case BuildConfig.APPLICATION_ID:
-                //检测上帝模式模块是否开启
+                // running in manager process for check module active
                 XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
                 break;
             default:
+                // running in other app process for enable godmode
                 if (checkBlockList(loadPackageParam.packageName)) {
                     Logger.i(TAG, String.format("%s in block list.", loadPackageParam.packageName));
                     return;
@@ -90,7 +100,7 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         }
     }
 
-    private boolean checkBlockList(String packageName) {
+    private static boolean checkBlockList(String packageName) {
         if (TextUtils.equals("com.android.systemui", packageName)) {
             return true;
         }
@@ -149,7 +159,15 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(Activity.class, "onDestroy", lifecycleHook);
 
         //hook debug layout
-        switchProp.addOnPropertyChangeListener(new OnDebugLayoutChangeListener());
+        if (Build.VERSION.SDK_INT < 29) {
+            SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
+            switchProp.addOnPropertyChangeListener(systemPropertiesHook);
+            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "getBoolean", String.class, boolean.class, systemPropertiesHook);
+        } else {
+            DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+            switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+            XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
+        }
 
         //Disable show layout margin bound
         XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
@@ -170,37 +188,10 @@ public final class BlockerInjector implements IXposedHookLoadPackage {
         //Volume key select
         DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
         XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, dispatchKeyEventHook);
-        BlockerInjector.switchProp.addOnPropertyChangeListener(dispatchKeyEventHook);
+        GodModeInjector.switchProp.addOnPropertyChangeListener(dispatchKeyEventHook);
 
         //Drag view support
         XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, new DispatchTouchEventHook());
     }
-
-    static final class OnDebugLayoutChangeListener implements Property.OnPropertyChangeListener<Boolean> {
-
-        @Override
-        public void onPropertyChange(Boolean layout) {
-            Logger.d(TAG, String.format("debug layout enable %b", layout));
-            try {
-                @SuppressLint("PrivateApi") Object windowManagerGlobal = XposedHelpers.callStaticMethod(Class.forName("android.view.WindowManagerGlobal"), "getInstance");
-                @SuppressWarnings("rawtypes") ArrayList roots = (ArrayList) XposedHelpers.getObjectField(windowManagerGlobal, "mRoots");
-                @SuppressLint("PrivateApi") final int MSG_INVALIDATE_WORLD = XposedHelpers.getStaticIntField(Class.forName("android.view.ViewRootImpl"), "MSG_INVALIDATE_WORLD");
-                for (Object viewRootImpl : roots) {
-                    Object attachInfo = XposedHelpers.getObjectField(viewRootImpl, "mAttachInfo");
-                    boolean debugLayout = XposedHelpers.getBooleanField(attachInfo, "mDebugLayout");
-                    if (layout != debugLayout) {
-                        XposedHelpers.setBooleanField(attachInfo, "mDebugLayout", layout);
-                        Handler handler = (Handler) XposedHelpers.getObjectField(viewRootImpl, "mHandler");
-                        if (!handler.hasMessages(MSG_INVALIDATE_WORLD)) {
-                            handler.sendEmptyMessageDelayed(MSG_INVALIDATE_WORLD, 200);
-                        }
-                    }
-                }
-            } catch (Throwable tr) {
-                Logger.e(TAG, "debug layout exception", tr);
-            }
-        }
-    }
-
 
 }

@@ -24,4 +24,4 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--keep class com.viewblocker.jrsen.injection.BlockerInjector{*;}
+-keep class com.viewblocker.jrsen.injection.GodModeInjector{*;}

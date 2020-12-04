@@ -4,15 +4,16 @@ import android.app.Application;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.preference.PreferenceManager;
+
+import androidx.preference.PreferenceManager;
 
 /**
  * Created by jrsen on 17-10-16.
  */
 
-public final class BlockerApplication extends Application {
+public final class GodModeApplication extends Application {
 
-    public static final String TAG = "ViewBlocker";
+    public static final String TAG = "GodMode";
 
     @Override
     public void onCreate() {

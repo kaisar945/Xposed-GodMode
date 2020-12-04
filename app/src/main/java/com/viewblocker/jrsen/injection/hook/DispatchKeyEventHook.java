@@ -16,7 +16,7 @@ import android.widget.Toast;
 import androidx.appcompat.widget.TooltipCompat;
 
 import com.viewblocker.jrsen.R;
-import com.viewblocker.jrsen.injection.BlockerInjector;
+import com.viewblocker.jrsen.injection.GodModeInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
@@ -36,7 +36,7 @@ import java.util.Locale;
 
 import de.robv.android.xposed.XC_MethodHook;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 public final class DispatchKeyEventHook extends XC_MethodHook implements Property.OnPropertyChangeListener<Boolean>, android.widget.SeekBar.OnSeekBarChangeListener {
 
@@ -50,7 +50,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
-        if (BlockerInjector.switchProp.get()) {
+        if (GodModeInjector.switchProp.get()) {
             Activity activity = (Activity) param.thisObject;
             KeyEvent event = (KeyEvent) param.args[0];
             param.setResult(dispatchKeyEvent(activity, event));
@@ -129,6 +129,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                         seekbar.setMax(mViewNodes.size() - 1);
                     } catch (Exception e) {
                         selecting = false;
+                        Logger.e(TAG, "block fail", e);
                         Toast.makeText(activity, GmResources.getString(activity, R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
                     }
                 }

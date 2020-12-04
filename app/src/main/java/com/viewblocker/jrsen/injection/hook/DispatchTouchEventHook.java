@@ -15,7 +15,7 @@ import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.viewblocker.jrsen.injection.BlockerInjector;
+import com.viewblocker.jrsen.injection.GodModeInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
@@ -31,7 +31,7 @@ import java.lang.ref.WeakReference;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 /**
@@ -59,7 +59,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         View view = (View) param.thisObject;
         MotionEvent event = (MotionEvent) param.args[0];
 
-        if (BlockerInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
+        if (GodModeInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
             param.setResult(dispatchTouchEvent(view, event));
         }
     }

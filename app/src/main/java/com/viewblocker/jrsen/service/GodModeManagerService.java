@@ -37,7 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXG;
 import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXO;
 import static com.viewblocker.jrsen.injection.util.FileUtils.S_IRWXU;

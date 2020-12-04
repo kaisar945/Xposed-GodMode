@@ -29,7 +29,7 @@ import java.util.Objects;
 
 import de.robv.android.xposed.XposedHelpers;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 /**
  * Created by jrsen on 17-10-13.

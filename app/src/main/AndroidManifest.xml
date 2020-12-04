@@ -6,7 +6,7 @@
     <uses-permission-sdk-23 android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-            android:name=".BlockerApplication"
+            android:name=".GodModeApplication"
             android:icon="@mipmap/ic_god"
             android:label="@string/app_name"
             android:supportsRtl="true"
@@ -62,7 +62,7 @@
                 android:value="53" />
         <meta-data
                 android:name="xposed_init"
-                android:value="com.viewblocker.jrsen.injection.BlockerInjector" />
+                android:value="com.viewblocker.jrsen.injection.GodModeInjector" />
     </application>
 
 </manifest>

@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import static com.viewblocker.jrsen.BlockerApplication.TAG;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 /**
  * Created by jrsen on 17-10-15.
@@ -23,7 +23,7 @@ import static com.viewblocker.jrsen.BlockerApplication.TAG;
 
 public final class ViewController {
 
-    private static SparseArray<Pair<WeakReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
+    private final static SparseArray<Pair<WeakReference<View>, ViewProperty>> blockedViewCache = new SparseArray<>();
 
     public static void applyRuleBatch(Activity activity, List<ViewRule> rules) {
         Logger.d(TAG, "[ApplyRuleBatch info start------------------------------------]");
