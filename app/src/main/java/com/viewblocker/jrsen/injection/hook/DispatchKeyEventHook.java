@@ -40,7 +40,7 @@ import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 public final class DispatchKeyEventHook extends XC_MethodHook implements Property.OnPropertyChangeListener<Boolean>, android.widget.SeekBar.OnSeekBarChangeListener {
 
-    public static volatile boolean selecting;
+    public static volatile boolean mSelecting;
 
     private final List<WeakReference<View>> mViewNodes = new ArrayList<>();
     private int mCurrentViewIndex = 0;
@@ -50,7 +50,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
-        if (GodModeInjector.switchProp.get()) {
+        if (GodModeInjector.switchProp.get() && !DispatchTouchEventHook.mDragging) {
             Activity activity = (Activity) param.thisObject;
             KeyEvent event = (KeyEvent) param.args[0];
             param.setResult(dispatchKeyEvent(activity, event));
@@ -95,6 +95,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                 @Override
                 public void onClick(View v) {
                     try {
+                        mNodeSelectorPanel.setAlpha(0f);
                         View view = mViewNodes.get(mCurrentViewIndex).get();
                         Logger.d(TAG, "removed view = " + view);
                         if (view != null) {
@@ -120,7 +121,11 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                                 @Override
                                 public void onAnimationEnd(View animView, Animator animation) {
                                     particleView.detachFromContainer();
-                                    selecting = false;
+                                    mNodeSelectorPanel.animate()
+                                            .alpha(1.0f)
+                                            .setInterpolator(new DecelerateInterpolator(1.0f))
+                                            .setDuration(300)
+                                            .start();
                                 }
                             });
                             particleView.boom(mMaskView);
@@ -128,7 +133,6 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                         mViewNodes.remove(mCurrentViewIndex--);
                         seekbar.setMax(mViewNodes.size() - 1);
                     } catch (Exception e) {
-                        selecting = false;
                         Logger.e(TAG, "block fail", e);
                         Toast.makeText(activity, GmResources.getString(activity, R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
                     }
@@ -148,8 +152,10 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                             .start();
                 }
             });
+            mSelecting = true;
             Logger.d(TAG, "add seek ok");
         } catch (Exception e) {
+            mSelecting = false;
             //god mode package uninstalled?
             e.printStackTrace();
             Logger.e(TAG, "add seek fail", e);
@@ -179,6 +185,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
             }
         });
         mNodeSelectorPanel = null;
+        mSelecting = false;
     }
 
     @Override

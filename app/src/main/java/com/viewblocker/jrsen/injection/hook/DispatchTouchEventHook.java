@@ -40,17 +40,17 @@ import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 public final class DispatchTouchEventHook extends XC_MethodHook {
 
-    private float x, y;
-    private Bitmap snapshot;
-    private ViewRule viewRule;
-    private MaskView maskView;
-    private CancelView cancelView;
-    private boolean hasBlockEvent;
-    public static volatile boolean isDragging;
+    public static volatile boolean mDragging;
 
-    private boolean isLongClick;
-    private CheckForLongPress pendingCheckForLongPress;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    private float mX, mY;
+    private Bitmap mSnapshot;
+    private ViewRule mViewRule;
+    private MaskView mMaskView;
+    private CancelView mCancelView;
+    private boolean mHasBlockEvent;
+    private boolean mLongClick;
+    private CheckForLongPress mPendingCheckForLongPress;
+    private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     private volatile boolean multiPointLock;
 
@@ -58,9 +58,12 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
     protected void beforeHookedMethod(MethodHookParam param) {
         View view = (View) param.thisObject;
         MotionEvent event = (MotionEvent) param.args[0];
-
         if (GodModeInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
-            param.setResult(dispatchTouchEvent(view, event));
+            if (DispatchKeyEventHook.mSelecting) {
+                param.setResult(true);
+            } else {
+                param.setResult(dispatchTouchEvent(view, event));
+            }
         }
     }
 
@@ -72,42 +75,42 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 return false;
             }
             if (!isAttachedToActivity(v)) {
-                if (!hasBlockEvent) {
+                if (!mHasBlockEvent) {
                     Toast.makeText(v.getContext(), "该控件属于悬浮窗暂不支持编辑", Toast.LENGTH_SHORT).show();
-                    hasBlockEvent = true;
+                    mHasBlockEvent = true;
                 }
                 return false;
             }
-            isDragging = true;
+            mDragging = true;
             multiPointLock = true;//防止多个触点同时触发
             //防止列表控件拦截事件传递
             ViewParent parent = v.getParent();
             if (parent != null) parent.requestDisallowInterceptTouchEvent(true);
-            x = event.getX();
-            y = event.getY();
-            pendingCheckForLongPress = new CheckForLongPress(v);
-            handler.postDelayed(pendingCheckForLongPress, ViewConfiguration.getLongPressTimeout());
+            mX = event.getX();
+            mY = event.getY();
+            mPendingCheckForLongPress = new CheckForLongPress(v);
+            mHandler.postDelayed(mPendingCheckForLongPress, ViewConfiguration.getLongPressTimeout());
         } else if (action == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
             float y = event.getY();
-            if (isLongClick) {
-                maskView.updateBounds((int) (event.getRawX() - this.x), (int) (event.getRawY() - this.y), v.getWidth(), v.getHeight());
-                Logger.i(TAG, "cancel bounds:" + cancelView.getRealBounds() + " mask bounds:" + maskView.getRealBounds());
-                maskView.setMarked(cancelView.getRealBounds().intersect(maskView.getRealBounds()));
+            if (mLongClick) {
+                mMaskView.updateBounds((int) (event.getRawX() - this.mX), (int) (event.getRawY() - this.mY), v.getWidth(), v.getHeight());
+                Logger.i(TAG, "cancel bounds:" + mCancelView.getRealBounds() + " mask bounds:" + mMaskView.getRealBounds());
+                mMaskView.setMarked(mCancelView.getRealBounds().intersect(mMaskView.getRealBounds()));
             } else if (x < 0 || x > v.getWidth() || y < 0 || y > v.getHeight()) {
-                handler.removeCallbacks(pendingCheckForLongPress);
+                mHandler.removeCallbacks(mPendingCheckForLongPress);
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             ViewParent parent = v.getParent();
             if (parent != null) parent.requestDisallowInterceptTouchEvent(false);
-            handler.removeCallbacks(pendingCheckForLongPress);
-            if (isLongClick) {
+            mHandler.removeCallbacks(mPendingCheckForLongPress);
+            if (mLongClick) {
                 performDetachMirrorView(v);
-                isLongClick = false;
+                mLongClick = false;
             }
-            hasBlockEvent = false;
+            mHasBlockEvent = false;
             multiPointLock = false;
-            isDragging = false;
+            mDragging = false;
         }
         return true;
     }
@@ -126,19 +129,19 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
 
-            cancelView = new CancelView(v.getContext());
-            cancelView.attachToContainer(container);
+            mCancelView = new CancelView(v.getContext());
+            mCancelView.attachToContainer(container);
 
-            maskView = MaskView.clone(v);
-            maskView.attachToContainer(container);
+            mMaskView = MaskView.clone(v);
+            mMaskView.attachToContainer(container);
 
-            viewRule = ViewHelper.makeRule(v);
+            mViewRule = ViewHelper.makeRule(v);
 
-            snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
+            mSnapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
 
             //Make original view invisible
             Logger.d(TAG, "[ApplyRule] start------------------------------------");
-            ViewController.applyRule(v, viewRule);
+            ViewController.applyRule(v, mViewRule);
             Logger.d(TAG, "[ApplyRule] end------------------------------------");
         } catch (PackageManager.NameNotFoundException | NullPointerException e) {
             e.printStackTrace();
@@ -153,29 +156,29 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             return;
         }
 
-        cancelView.detachFromContainer();
-        if (maskView.isMarked()) {
+        mCancelView.detachFromContainer();
+        if (mMaskView.isMarked()) {
             //丢弃该条规则
             try {
-                maskView.detachFromContainer();
-                viewRule.visibility = View.VISIBLE;
-                ViewController.revokeRule(v, viewRule);
-                if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
+                mMaskView.detachFromContainer();
+                mViewRule.visibility = View.VISIBLE;
+                ViewController.revokeRule(v, mViewRule);
+                if (Preconditions.checkBitmap(mSnapshot)) mSnapshot.recycle();
             } finally {
-                snapshot = null;
-                maskView = null;
-                cancelView = null;
-                viewRule = null;
+                mSnapshot = null;
+                mMaskView = null;
+                mCancelView = null;
+                mViewRule = null;
             }
         } else {
             //Make original view gone
-            viewRule.visibility = View.GONE;
+            mViewRule.visibility = View.GONE;
             Logger.d(TAG, "[ApplyRule] start------------------------------------");
-            ViewController.applyRule(v, viewRule);
+            ViewController.applyRule(v, mViewRule);
             Logger.d(TAG, "[ApplyRule] end------------------------------------");
             GodModeManager manager = GodModeManager.getDefault();
-            manager.writeRule(v.getContext().getPackageName(), viewRule, snapshot);
-            if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
+            manager.writeRule(v.getContext().getPackageName(), mViewRule, mSnapshot);
+            if (Preconditions.checkBitmap(mSnapshot)) mSnapshot.recycle();
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
             final ParticleView particleView = new ParticleView(activity);
@@ -184,7 +187,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                 @Override
                 public void onAnimationStart(View animView, Animator animation) {
-                    maskView.detachFromContainer();
+                    mMaskView.detachFromContainer();
                 }
 
                 @Override
@@ -192,14 +195,14 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                     try {
                         particleView.detachFromContainer();
                     } finally {
-                        snapshot = null;
-                        maskView = null;
-                        cancelView = null;
-                        viewRule = null;
+                        mSnapshot = null;
+                        mMaskView = null;
+                        mCancelView = null;
+                        mViewRule = null;
                     }
                 }
             });
-            particleView.boom(maskView);
+            particleView.boom(mMaskView);
         }
     }
 
@@ -218,7 +221,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             if (view != null) {
                 performAttachMirrorView(view);
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                isLongClick = true;
+                mLongClick = true;
             }
         }
     }
