@@ -75,7 +75,7 @@ public final class ViewController {
             }
             v.requestLayout();
         }
-        v.setVisibility(viewRule.visibility);
+        ViewCompat.setVisibility(v, viewRule.visibility);
         blockedViewCache.put(ruleHashCode, Pair.create(new WeakReference<>(v), viewProperty));
         Logger.d(TAG, String.format(Locale.getDefault(), "apply rule add view cache %d=%s", ruleHashCode, v));
         Logger.d(TAG, "blockedViewCache:" + blockedViewCache);
@@ -111,7 +111,7 @@ public final class ViewController {
             ViewProperty viewProperty = viewInfo.second;
             v.setAlpha(viewProperty.alpha);
             v.setClickable(viewProperty.clickable);
-            v.setVisibility(viewProperty.visibility);
+            ViewCompat.setVisibility(v, viewProperty.visibility);
             ViewGroup.LayoutParams lp = v.getLayoutParams();
             if (lp != null) {
                 lp.width = viewProperty.layout_params_width;
@@ -124,7 +124,7 @@ public final class ViewController {
             // cache missing why?
             Logger.w(TAG, "view cache missing why?");
             v.setAlpha(1f);
-            v.setVisibility(viewRule.visibility);
+            ViewCompat.setVisibility(v, viewRule.visibility);
         }
     }
 
