@@ -3,6 +3,7 @@ package com.viewblocker.jrsen.injection.hook;
 import android.animation.Animator;
 import android.app.Activity;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -27,7 +28,6 @@ import com.viewblocker.jrsen.injection.util.Property;
 import com.viewblocker.jrsen.injection.weiget.MaskView;
 import com.viewblocker.jrsen.injection.weiget.ParticleView;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.util.Preconditions;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -37,16 +37,18 @@ import java.util.Locale;
 import de.robv.android.xposed.XC_MethodHook;
 
 import static com.viewblocker.jrsen.GodModeApplication.TAG;
+import static com.viewblocker.jrsen.injection.util.CommonUtils.recycleBitmap;
 
 public final class DispatchKeyEventHook extends XC_MethodHook implements Property.OnPropertyChangeListener<Boolean>, android.widget.SeekBar.OnSeekBarChangeListener {
 
-    public static volatile boolean mSelecting;
-
+    private static final int OVERLAY_COLOR = Color.argb(150, 255, 0, 0);
     private final List<WeakReference<View>> mViewNodes = new ArrayList<>();
     private int mCurrentViewIndex = 0;
 
     private MaskView mMaskView;
     private View mNodeSelectorPanel;
+
+    public static volatile boolean mKeySelecting;
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
@@ -61,8 +63,9 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
         Logger.d(TAG, keyEvent.toString());
         int action = keyEvent.getAction();
         int keyCode = keyEvent.getKeyCode();
-        if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) && action == KeyEvent.ACTION_UP) {
-            if (mMaskView == null) {
+        if (action == KeyEvent.ACTION_UP &&
+                (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)) {
+            if (!mKeySelecting) {
                 showNodeSelectPanel(activity);
             } else {
                 //hide node select panel
@@ -73,15 +76,13 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
     }
 
     private void showNodeSelectPanel(final Activity activity) {
-        //build view hierarchy tree
         mViewNodes.clear();
-        mViewNodes.addAll(ViewHelper.buildViewNodes(activity.getWindow().getDecorView()));
         mCurrentViewIndex = 0;
-
-        final WeakReference<View> viewWeakReference = mViewNodes.get(mCurrentViewIndex);
-        mMaskView = MaskView.mask(viewWeakReference.get());
-        mMaskView.setSelected(true);
+        //build view hierarchy tree
+        mViewNodes.addAll(ViewHelper.buildViewNodes(activity.getWindow().getDecorView()));
         final ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
+        mMaskView = MaskView.makeMaskView(activity);
+        mMaskView.setMaskOverlay(OVERLAY_COLOR);
         mMaskView.attachToContainer(container);
         try {
             LayoutInflater layoutInflater = GmLayoutInflater.from(activity);
@@ -96,30 +97,27 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                 public void onClick(View v) {
                     try {
                         mNodeSelectorPanel.setAlpha(0f);
-                        View view = mViewNodes.get(mCurrentViewIndex).get();
+                        final View view = mViewNodes.get(mCurrentViewIndex).get();
                         Logger.d(TAG, "removed view = " + view);
                         if (view != null) {
-                            mMaskView.inflateView(view);
-                            ViewRule viewRule = ViewHelper.makeRule(view);
-                            viewRule.visibility = View.GONE;
-                            Logger.d(TAG, "[ApplyRule] start------------------------------------");
-                            ViewController.applyRule(view, viewRule);
-                            Logger.d(TAG, "[ApplyRule] end------------------------------------");
-                            Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
-                            GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
-                            if (Preconditions.checkBitmap(snapshot)) snapshot.recycle();
+                            final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
+                            final ViewRule viewRule = ViewHelper.makeRule(view);
                             final ParticleView particleView = new ParticleView(activity);
                             particleView.setDuration(1000);
                             particleView.attachToContainer(container);
                             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                                 @Override
                                 public void onAnimationStart(View animView, Animator animation) {
-                                    mMaskView.setSelected(false);
-                                    mMaskView.updateBounds(new Rect());
+                                    //hide overlay
+                                    mMaskView.updateOverlayBounds(new Rect());
+                                    viewRule.visibility = View.GONE;
+                                    ViewController.applyRule(view, viewRule);
                                 }
 
                                 @Override
                                 public void onAnimationEnd(View animView, Animator animation) {
+                                    GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
+                                    recycleBitmap(snapshot);
                                     particleView.detachFromContainer();
                                     mNodeSelectorPanel.animate()
                                             .alpha(1.0f)
@@ -128,7 +126,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                                             .start();
                                 }
                             });
-                            particleView.boom(mMaskView);
+                            particleView.boom(view);
                         }
                         mViewNodes.remove(mCurrentViewIndex--);
                         seekbar.setMax(mViewNodes.size() - 1);
@@ -152,13 +150,11 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                             .start();
                 }
             });
-            mSelecting = true;
-            Logger.d(TAG, "add seek ok");
+            mKeySelecting = true;
         } catch (Exception e) {
-            mSelecting = false;
             //god mode package uninstalled?
-            e.printStackTrace();
-            Logger.e(TAG, "add seek fail", e);
+            Logger.e(TAG, "showNodeSelectPanel fail", e);
+            mKeySelecting = false;
         }
     }
 
@@ -185,7 +181,9 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
             }
         });
         mNodeSelectorPanel = null;
-        mSelecting = false;
+        mViewNodes.clear();
+        mCurrentViewIndex = 0;
+        mKeySelecting = false;
     }
 
     @Override
@@ -202,8 +200,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
             View view = mViewNodes.get(mCurrentViewIndex).get();
             Logger.d(TAG, String.format(Locale.getDefault(), "progress=%d selected view=%s", progress, view));
             if (view != null) {
-                mMaskView.setSelected(true);
-                mMaskView.updateBounds(ViewHelper.getLocationInWindow(view));
+                mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(view));
             }
         }
     }

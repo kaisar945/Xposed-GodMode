@@ -2,10 +2,13 @@ package com.viewblocker.jrsen.injection.weiget;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,8 +25,9 @@ import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 public final class MaskView extends View {
 
-    private static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
-    private static final int SELECT_COLOR = Color.argb(150, 255, 0, 0);
+    private Drawable mMaskDrawable;
+
+    private int mMarkColor = Color.TRANSPARENT;
     private boolean isMarked;
 
     public MaskView(Context context) {
@@ -43,50 +47,44 @@ public final class MaskView extends View {
         setTag(TAG_GM_CMP);
     }
 
-    public void updateBounds(int x, int y, int w, int h) {
-        ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) getLayoutParams();
-        layoutParams.width = w;
-        layoutParams.height = h;
-        layoutParams.leftMargin = x;
-        layoutParams.topMargin = y;
-        requestLayout();
+    @Override
+    protected void onDraw(Canvas canvas) {
+        if (mMaskDrawable != null) {
+            mMaskDrawable.draw(canvas);
+        }
     }
 
-    public void updateBounds(Rect bounds) {
-        updateBounds(bounds.left, bounds.top, bounds.width(), bounds.height());
+    public void updateOverlayBounds(int x, int y, int w, int h) {
+        updateOverlayBounds(new Rect(x, y, x + w, y + h));
     }
 
-    private Rect bounds = new Rect();
+    public void updateOverlayBounds(Rect bounds) {
+        mMaskDrawable.setBounds(bounds);
+        invalidate();
+    }
 
     public Rect getRealBounds() {
-        int[] out = new int[2];
-        getLocationInWindow(out);
-        int l = out[0];
-        int t = out[1];
-        int r = l + getWidth();
-        int b = t + getHeight();
-        bounds.set(l, t, r, b);
-        return bounds;
+        return mMaskDrawable.getBounds();
+    }
+
+    private void setMaskDrawable(Drawable drawable) {
+        mMaskDrawable = drawable;
+    }
+
+    private Drawable getMaskDrawable() {
+        return mMaskDrawable;
+    }
+
+    public void setMarkColor(int color) {
+        mMarkColor = color;
     }
 
     public void setMarked(boolean enable) {
         if (isMarked != enable) {
             if (isMarked = enable) {
-                getBackground().setColorFilter(MARK_COLOR, PorterDuff.Mode.SRC_ATOP);
+                mMaskDrawable.setColorFilter(mMarkColor, PorterDuff.Mode.SRC_ATOP);
             } else {
-                getBackground().clearColorFilter();
-            }
-        }
-    }
-
-    @Override
-    public void setSelected(boolean selected) {
-        if (selected != isSelected()) {
-            super.setSelected(selected);
-            if (selected) {
-                setBackgroundColor(SELECT_COLOR);
-            } else {
-                setBackgroundColor(Color.TRANSPARENT);
+                mMaskDrawable.clearColorFilter();
             }
         }
     }
@@ -106,31 +104,18 @@ public final class MaskView extends View {
         }
     }
 
-    public void inflateView(View view) {
+    public void setMaskOverlay(View view) {
         Bitmap bitmap = ViewHelper.cloneViewAsBitmap(view);
-        setBackground(new BitmapDrawable(getResources(), bitmap));
+        setMaskDrawable(new BitmapDrawable(getResources(), bitmap));
     }
 
-    public static MaskView clone(View view) {
-        MaskView maskView = new MaskView(view.getContext());
-        maskView.inflateView(view);
-        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(view.getWidth(), view.getHeight());
-        int[] out = new int[2];
-        view.getLocationOnScreen(out);
-        layoutParams.leftMargin = out[0];
-        layoutParams.topMargin = out[1];
-        maskView.setLayoutParams(layoutParams);
-        return maskView;
+    public void setMaskOverlay(int color) {
+        setMaskDrawable(new ColorDrawable(color));
     }
 
-    public static MaskView mask(View view) {
-        MaskView maskView = new MaskView(view.getContext());
-        maskView.setSelected(true);
-        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(view.getWidth(), view.getHeight());
-        int[] out = new int[2];
-        view.getLocationOnScreen(out);
-        layoutParams.leftMargin = out[0];
-        layoutParams.topMargin = out[1];
+    public static MaskView makeMaskView(Context context) {
+        MaskView maskView = new MaskView(context);
+        ViewGroup.MarginLayoutParams layoutParams = new ViewGroup.MarginLayoutParams(ViewGroup.MarginLayoutParams.MATCH_PARENT, ViewGroup.MarginLayoutParams.MATCH_PARENT);
         maskView.setLayoutParams(layoutParams);
         return maskView;
     }

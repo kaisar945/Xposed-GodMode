@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.HapticFeedbackConstants;
@@ -19,7 +20,6 @@ import com.viewblocker.jrsen.injection.GodModeInjector;
 import com.viewblocker.jrsen.injection.ViewController;
 import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
-import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.injection.weiget.CancelView;
 import com.viewblocker.jrsen.injection.weiget.MaskView;
 import com.viewblocker.jrsen.injection.weiget.ParticleView;
@@ -31,8 +31,8 @@ import java.lang.ref.WeakReference;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
-import static com.viewblocker.jrsen.GodModeApplication.TAG;
 import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
+import static com.viewblocker.jrsen.injection.util.CommonUtils.recycleBitmap;
 
 /**
  * Created by jrsen on 17-12-6.
@@ -40,7 +40,7 @@ import static com.viewblocker.jrsen.injection.ViewHelper.TAG_GM_CMP;
 
 public final class DispatchTouchEventHook extends XC_MethodHook {
 
-    public static volatile boolean mDragging;
+    private final int MARK_COLOR = Color.argb(150, 139, 195, 75);
 
     private float mX, mY;
     private Bitmap mSnapshot;
@@ -52,14 +52,16 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
     private CheckForLongPress mPendingCheckForLongPress;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
-    private volatile boolean multiPointLock;
+    private volatile boolean mMultiPointLock;
+
+    public static volatile boolean mDragging;
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
         View view = (View) param.thisObject;
         MotionEvent event = (MotionEvent) param.args[0];
         if (GodModeInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
-            if (DispatchKeyEventHook.mSelecting) {
+            if (DispatchKeyEventHook.mKeySelecting) {
                 param.setResult(true);
             } else {
                 param.setResult(dispatchTouchEvent(view, event));
@@ -70,7 +72,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
     private boolean dispatchTouchEvent(View v, MotionEvent event) {
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_DOWN) {
-            if (multiPointLock) {
+            if (mMultiPointLock) {
                 Toast.makeText(v.getContext(), "不支持多点操作", Toast.LENGTH_SHORT).show();
                 return false;
             }
@@ -82,7 +84,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 return false;
             }
             mDragging = true;
-            multiPointLock = true;//防止多个触点同时触发
+            mMultiPointLock = true;//防止多个触点同时触发
             //防止列表控件拦截事件传递
             ViewParent parent = v.getParent();
             if (parent != null) parent.requestDisallowInterceptTouchEvent(true);
@@ -94,8 +96,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             float x = event.getX();
             float y = event.getY();
             if (mLongClick) {
-                mMaskView.updateBounds((int) (event.getRawX() - this.mX), (int) (event.getRawY() - this.mY), v.getWidth(), v.getHeight());
-                Logger.i(TAG, "cancel bounds:" + mCancelView.getRealBounds() + " mask bounds:" + mMaskView.getRealBounds());
+                mMaskView.updateOverlayBounds((int) (event.getRawX() - this.mX), (int) (event.getRawY() - this.mY), v.getWidth(), v.getHeight());
                 mMaskView.setMarked(mCancelView.getRealBounds().intersect(mMaskView.getRealBounds()));
             } else if (x < 0 || x > v.getWidth() || y < 0 || y > v.getHeight()) {
                 mHandler.removeCallbacks(mPendingCheckForLongPress);
@@ -109,7 +110,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 mLongClick = false;
             }
             mHasBlockEvent = false;
-            multiPointLock = false;
+            mMultiPointLock = false;
             mDragging = false;
         }
         return true;
@@ -129,20 +130,17 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
 
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
 
-            mCancelView = new CancelView(v.getContext());
+            mCancelView = new CancelView(activity);
             mCancelView.attachToContainer(container);
 
-            mMaskView = MaskView.clone(v);
+            mMaskView = MaskView.makeMaskView(activity);
+            mMaskView.setMaskOverlay(v);
+            mMaskView.setMarkColor(MARK_COLOR);
             mMaskView.attachToContainer(container);
 
-            mViewRule = ViewHelper.makeRule(v);
-
             mSnapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
-
-            //Make original view invisible
-            Logger.d(TAG, "[ApplyRule] start------------------------------------");
+            mViewRule = ViewHelper.makeRule(v);
             ViewController.applyRule(v, mViewRule);
-            Logger.d(TAG, "[ApplyRule] end------------------------------------");
         } catch (PackageManager.NameNotFoundException | NullPointerException e) {
             e.printStackTrace();
         }
@@ -163,7 +161,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 mMaskView.detachFromContainer();
                 mViewRule.visibility = View.VISIBLE;
                 ViewController.revokeRule(v, mViewRule);
-                if (Preconditions.checkBitmap(mSnapshot)) mSnapshot.recycle();
+                recycleBitmap(mSnapshot);
             } finally {
                 mSnapshot = null;
                 mMaskView = null;
@@ -171,15 +169,6 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 mViewRule = null;
             }
         } else {
-            //Make original view gone
-            mViewRule.visibility = View.GONE;
-            Logger.d(TAG, "[ApplyRule] start------------------------------------");
-            ViewController.applyRule(v, mViewRule);
-            Logger.d(TAG, "[ApplyRule] end------------------------------------");
-            GodModeManager manager = GodModeManager.getDefault();
-            manager.writeRule(v.getContext().getPackageName(), mViewRule, mSnapshot);
-            if (Preconditions.checkBitmap(mSnapshot)) mSnapshot.recycle();
-
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
             final ParticleView particleView = new ParticleView(activity);
             particleView.setDuration(1000);
@@ -187,6 +176,11 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                 @Override
                 public void onAnimationStart(View animView, Animator animation) {
+                    //Make original view gone
+                    mViewRule.visibility = View.GONE;
+                    ViewController.applyRule(v, mViewRule);
+                    GodModeManager.getDefault().writeRule(v.getContext().getPackageName(), mViewRule, mSnapshot);
+                    recycleBitmap(mSnapshot);
                     mMaskView.detachFromContainer();
                 }
 

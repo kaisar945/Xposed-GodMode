@@ -81,7 +81,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             mStarted = true;
         } catch (Exception e) {
             mStarted = false;
-            Logger.e(TAG, "start GodModeManagerService failed", e);
+            Logger.e(TAG, "loadPreferenceData failed", e);
         }
     }
 
@@ -120,14 +120,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                     String packageName = (String) args[1];
                     ViewRule viewRule = (ViewRule) args[2];
                     Bitmap snapshot = (Bitmap) args[3];
-                    try {
-                        if (Preconditions.checkBitmapOrThrow(snapshot)) {
-                            String appDataDir = getAppDataDir(packageName);
-                            viewRule.imagePath = saveBitmap(snapshot, appDataDir);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    String appDataDir = getAppDataDir(packageName);
+                    viewRule.imagePath = saveBitmap(snapshot, appDataDir);
                     String json = new Gson().toJson(actRules);
                     String appRuleFilePath = getAppRuleFilePath(packageName);
                     FileUtils.stringToFile(appRuleFilePath, json);
@@ -198,7 +192,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public void setEditMode(boolean enable) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "can't set edit mode permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "set edit mode fail permission denied");
         if (!mStarted) return;
         mInEditMode = enable;
         notifyObserverEditModeChanged(enable);
@@ -223,7 +217,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public void addObserver(String packageName, IObserver observer) throws RemoteException {
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
-            throw new RemoteException("can't register observer permission deny");
+            throw new RemoteException("register observer fail permission denied");
         }
         if (!mStarted) return;
         mRemoteCallbackList.register(new ObserverProxy(packageName, observer));
@@ -236,7 +230,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public Map<String, ActRules> getAllRules() throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "can't get all rules permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "get all rules fail permission denied");
         if (!mStarted) return Collections.emptyMap();
         return mRuleCache;
     }
@@ -250,7 +244,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public ActRules getRules(String packageName) throws RemoteException {
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
-            throw new RemoteException("can't get rules permission deny");
+            throw new RemoteException("get rules fail permission denied");
         }
         if (!mStarted) return new ActRules();
         return mRuleCache.containsKey(packageName) ? mRuleCache.get(packageName) : new ActRules();
@@ -266,7 +260,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public boolean writeRule(String packageName, ViewRule viewRule, Bitmap snapshot) throws RemoteException {
         if (!checkPermission(packageName) && !checkPermission(BuildConfig.APPLICATION_ID)) {
-            throw new RemoteException("can't get rules permission deny");
+            throw new RemoteException("write rule fail permission denied");
         }
         if (!mStarted) return false;
         try {
@@ -280,7 +274,11 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             }
             viewRules.add(viewRule);
             mHandle.obtainMessage(WRITE_RULE, new Object[]{actRules, packageName, viewRule, snapshot}).sendToTarget();
-            notifyObserverRuleChanged(packageName, actRules);
+            //If the operation comes from within the app, the caller should not be notified
+            String callerPackage = mContext.getPackageManager().getNameForUid(Binder.getCallingUid());
+            if (!TextUtils.equals(callerPackage, packageName)) {
+                notifyObserverRuleChanged(packageName, actRules);
+            }
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -297,7 +295,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean updateRule(String packageName, ViewRule viewRule) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "can't update rule permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "update rule fail permission denied");
         if (!mStarted) return false;
         try {
             ActRules actRules = mRuleCache.get(packageName);
@@ -332,7 +330,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean deleteRule(String packageName, ViewRule viewRule) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rule permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "delete rule fail permission denied");
         if (!mStarted) return false;
         try {
             ActRules actRules = Preconditions.checkNotNull(mRuleCache.get(packageName), "not found this rule can't delete.");
@@ -357,7 +355,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean deleteRules(String packageName) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "can't delete rules permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "delete rules fail permission denied");
         if (!mStarted) return false;
         try {
             mRuleCache.remove(packageName);
@@ -372,7 +370,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
 
     @Override
     public ParcelFileDescriptor openFile(String filePath, int mode) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "open file failed permission deny");
+        enforcePermission(BuildConfig.APPLICATION_ID, "open file fail permission denied");
         try {
             return ParcelFileDescriptor.open(new File(filePath), mode);
         } catch (FileNotFoundException e) {

@@ -2,11 +2,11 @@ package com.viewblocker.jrsen.preference;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import androidx.preference.PreferenceViewHolder;
 import android.widget.ImageView;
 
+import androidx.preference.PreferenceViewHolder;
+
 import com.viewblocker.jrsen.R;
-import com.viewblocker.jrsen.util.Preconditions;
 
 /**
  * Created by jrsen on 17-10-19.
@@ -28,10 +28,8 @@ public final class ImageViewPreference extends androidx.preference.Preference {
     @Override
     public void onBindViewHolder(PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
-        if (Preconditions.checkBitmap(bitmap)) {
-            ImageView imageView = (ImageView) holder.findViewById(R.id.image);
-            imageView.setImageBitmap(bitmap);
-        }
+        ImageView imageView = (ImageView) holder.findViewById(R.id.image);
+        imageView.setImageBitmap(bitmap);
     }
 
     //    @Override
