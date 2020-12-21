@@ -28,6 +28,7 @@ import com.viewblocker.jrsen.preference.ImageViewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -180,6 +181,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     public void onDestroy() {
         super.onDestroy();
         dataObserver = null;
+        LoaderManager.getInstance(this).destroyLoader(0);
     }
 
     @Override
@@ -219,7 +221,6 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
     @Override
     public void onLoaderReset(@NonNull Loader<Bitmap> loader) {
-
     }
 
     static final class ImageLoader extends AsyncTaskLoader<Bitmap> {
@@ -234,19 +235,27 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         @Nullable
         @Override
         public Bitmap loadInBackground() {
-            try {
+            Bitmap snapshot = viewRule.snapshot;
+            if (snapshot == null && !TextUtils.isEmpty(viewRule.imagePath)) {
                 ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
-                Preconditions.checkNotNull(parcelFileDescriptor);
-                try {
-                    Bitmap bitmap = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
-                    ViewHelper.markViewBounds(bitmap, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
-                    return bitmap;
-                } finally {
-                    parcelFileDescriptor.close();
+                if (parcelFileDescriptor != null) {
+                    try {
+                        try {
+                            snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
+                        } finally {
+                            parcelFileDescriptor.close();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-            } catch (Exception ignore) {
-                return null;
             }
+            if (snapshot != null) {
+                Bitmap copySnapshot = snapshot.copy(snapshot.getConfig(), true);
+                ViewHelper.markViewBounds(copySnapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
+                return copySnapshot;
+            }
+            return null;
         }
 
 

@@ -18,7 +18,7 @@
     <string name="pref_description_add_group">这里有一群老伙计们</string>
 
     <string name="menu_revert">恢复</string>
-    <string name="menu_share">分享</string>
+    <string name="menu_export">导出</string>
     <string name="thanks">感谢你我的伙计</string>
     <string name="tips_qrcord">嘿！伙计二维码帮你放相册了</string>
     <string name="dialog_btn_alipay">支付宝支持</string>
@@ -41,14 +41,11 @@
     <string name="title_app_rule">应用规则</string>
     <string name="title_rule_details">规则详情</string>
 
-    <string name="export_view_rule_success">嘿 伙计! 规则帮你放相册了</string>
-    <string name="export_view_rule_failed">噢 真见鬼 居然失败了… 去向上帝祷告一下吧!</string>
-
     <string name="field_rule_alias" translatable="false">[%1$s]\n</string>
     <string name="field_activity">依附界面:%1$s</string>
     <string name="field_view">控件类型:%1$s</string>
 
-    <string name="dialog_title_export">正在导出%1$s应用规则…</string>
+    <string name="dialog_title_export">嘿 伙计别着急我想这应该不会太久…</string>
     <string name="export_successful">导出成功,文件路径:%1$s</string>
     <string name="export_failed">导出失败</string>
 

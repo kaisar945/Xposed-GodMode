@@ -124,6 +124,10 @@ public final class FileUtils {
         return file.delete();
     }
 
+    public static boolean rmdir(String dirPath){
+        return delete(new File(dirPath));
+    }
+
     public static boolean writeFile(InputStream in, File file) {
         try {
             FileOutputStream out = new FileOutputStream(file);

@@ -1,20 +1,7 @@
 package com.viewblocker.jrsen.fragment;
 
-import android.content.Intent;
-import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentStatePagerAdapter;
-import androidx.viewpager.widget.ViewPager;
-import androidx.preference.PreferenceFragmentCompat;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -22,14 +9,23 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentStatePagerAdapter;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.viewpager.widget.ViewPager;
+
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
+import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ViewRule;
-import com.viewblocker.jrsen.util.QRCodeFactory;
+import com.viewblocker.jrsen.util.RuleHelper;
 import com.viewblocker.jrsen.widget.Snackbar;
 
-import java.util.Objects;
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCompat implements ViewPager.OnPageChangeListener {
 
@@ -86,25 +82,13 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
             GodModeManager.getDefault().deleteRule(packageName.toString(), viewRule);
             adapterDataObserver.onItemRemoved(curIndex);
             requireActivity().onBackPressed();
-        } else if (item.getItemId() == R.id.menu_share) {
+        } else if (item.getItemId() == R.id.menu_export) {
             try {
-                Bitmap image = Objects.requireNonNull(QRCodeFactory.encode(viewRule));
-                final String imagePath = Objects.requireNonNull(MediaStore.Images.Media.insertImage(requireContext().getContentResolver(), image, "rule_image", "god mode rule file"));
-                Snackbar.make(requireActivity(), R.string.export_view_rule_success, Snackbar.LENGTH_LONG)
-                        .setAction(R.string.menu_share, new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                Uri imgUri = Uri.parse(imagePath);
-                                Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                                shareIntent.putExtra(Intent.EXTRA_STREAM, imgUri);
-                                shareIntent.setType("image/jpeg");
-                                startActivity(shareIntent);
-                            }
-                        })
-                        .show();
+                String filepath = RuleHelper.exportRules(viewRule);
+                Snackbar.make(requireActivity(), getString(R.string.export_successful, filepath), Snackbar.LENGTH_LONG).show();
             } catch (Exception e) {
-                e.printStackTrace();
-                Snackbar.make(requireActivity(), R.string.export_view_rule_failed, Snackbar.LENGTH_LONG).show();
+                Logger.e(TAG, "export single rule fail", e);
+                Snackbar.make(requireActivity(), R.string.export_failed, Snackbar.LENGTH_LONG).show();
             }
         }
         return true;

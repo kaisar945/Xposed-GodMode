@@ -7,6 +7,7 @@ import android.os.Parcelable;
 import android.view.View;
 
 import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
 
 import com.google.gson.annotations.SerializedName;
 
@@ -19,6 +20,9 @@ import java.util.Objects;
 @Keep
 public final class ViewRule implements Parcelable, Cloneable {
 
+    //控件界面快照
+    public transient Bitmap snapshot;
+    //控件缩略图
     public transient Bitmap thumbnail;
 
     //生成规则的应用包名
@@ -156,9 +160,31 @@ public final class ViewRule implements Parcelable, Cloneable {
         }
     };
 
+    @NonNull
     @Override
-    public Object clone() throws CloneNotSupportedException {
-        return super.clone();
+    public ViewRule clone() {
+        ViewRule viewRule = new ViewRule(
+                packageName,
+                matchVersionName,
+                matchVersionCode,
+                versionCode,
+                imagePath,
+                alias,
+                x,
+                y,
+                width,
+                height,
+                depth,
+                activityClass,
+                viewClass,
+                resourceName,
+                text,
+                description,
+                visibility,
+                timestamp);
+        viewRule.snapshot = snapshot;
+        viewRule.thumbnail = thumbnail;
+        return viewRule;
     }
 
     public int getViewId(Resources res) {

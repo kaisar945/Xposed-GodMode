@@ -48,23 +48,6 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        if (intent != null && Intent.ACTION_SEND.equals(intent.getAction())
-                && intent.getType() != null
-                && (intent.getType().startsWith("*/*")
-                || intent.getType().startsWith("image/")
-                || intent.getType().startsWith("application/octet-stream"))) {
-            for (int i = getFragmentManager().getBackStackEntryCount(); i > 0; i--) {
-                getFragmentManager().popBackStackImmediate();
-            }
-            GeneralPreferenceFragment fragment =
-                    (GeneralPreferenceFragment) getSupportFragmentManager().findFragmentById(android.R.id.content);
-            fragment.dispatchOnNewIntent(intent);
-        }
-    }
-
-    @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         permissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }

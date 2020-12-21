@@ -41,7 +41,6 @@ dependencies {
     // Version 3.0.x of zxing core contains some code that is not compatible on Android 2.2 and earlier.
     // This mostly affects encoding, but you should test if you plan to support these versions.
     // Older versions e.g. 2.2 may also work if you need support for older Android versions.
-    implementation 'com.google.zxing:core:3.4.1'
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'androidx.legacy:legacy-preference-v14:1.0.0'

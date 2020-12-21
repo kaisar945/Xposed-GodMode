@@ -6,7 +6,7 @@
         android:title="@string/menu_revert" />
 
     <item
-        android:id="@+id/menu_share"
-        android:title="@string/menu_share" />
+        android:id="@+id/menu_export"
+        android:title="@string/menu_export" />
 
 </menu>

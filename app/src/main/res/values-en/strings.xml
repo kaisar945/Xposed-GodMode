@@ -11,7 +11,7 @@
     <string name="pref_title_quick_setting">Enable notification</string>
     <string name="pref_description_quick_setting">Support Android7.0+ Tiles</string>
     <string name="pref_description_donate_me">Thank you</string>
-    <string name="menu_share">Share with</string>
+    <string name="menu_export">Export</string>
     <string name="dialog_btn_alipay">Alipay</string>
     <string name="dialog_btn_wxpay">WechatPay</string>
     <string name="menu_revert">Revoke</string>
@@ -43,13 +43,11 @@
     <string name="title_rule_details">Details</string>
     <string name="donate_thanks">Thanks for supporting my work</string>
     <string name="xposed_description">Like God, Remove any elements on the interface that you don’t like</string>
-    <string name="export_view_rule_failed">Export failed</string>
     <string name="export_successful">Export success %1$s</string>
-    <string name="dialog_title_export">Exporting%1$s…</string>
+    <string name="dialog_title_export">Exporting rules…</string>
     <string name="menu_title_import_view_rule_description">"Select import rule image "</string>
     <string name="field_activity">Activity:%1$s</string>
     <string name="field_view">View:%1$s</string>
-    <string name="export_view_rule_success">The rule image has been placed in your gallery</string>
     <string name="share_crash_info">Share crash info</string>
     <string name="wechat_donate_tips">Select QR code scan from gallery</string>
     <string name="rule_details_field_create_time">Create time</string>

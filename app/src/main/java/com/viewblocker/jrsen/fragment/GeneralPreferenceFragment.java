@@ -9,14 +9,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
-import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.provider.MediaStore;
-import android.provider.OpenableColumns;
 import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -24,7 +19,9 @@ import android.view.MenuItem;
 import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.loader.content.Loader;
@@ -41,20 +38,18 @@ import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.SettingsActivity;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.injection.util.FileUtils;
+import com.viewblocker.jrsen.injection.util.Logger;
 import com.viewblocker.jrsen.rule.ActRules;
-import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.DonateHelper;
-import com.viewblocker.jrsen.util.QRCodeFactory;
+import com.viewblocker.jrsen.util.RuleHelper;
 import com.viewblocker.jrsen.util.XposedEnvironment;
-import com.viewblocker.jrsen.util.ZipUtils;
 import com.viewblocker.jrsen.widget.Snackbar;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
 import java.io.InputStream;
 import java.util.HashMap;
-import java.util.Objects;
+
+import static com.viewblocker.jrsen.GodModeApplication.TAG;
 
 
 /**
@@ -63,6 +58,9 @@ import java.util.Objects;
 
 public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
         SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<HashMap<String, ActRules>> {
+
+    private static final int RULE_LOADER_ID = 0x01;
+    private static final int IMPORT_LOADER_ID = 0x02;
 
     private static final String SETTING_PREFS = "settings";
     private static final String KEY_VERSION_CODE = "version_code";
@@ -104,19 +102,22 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else if (!XposedEnvironment.isModuleActive(getContext())) {
             requestEnableModuleDialog();
         }
-        LoaderManager.getInstance(this).initLoader(0, null, this);
+        LoaderManager.getInstance(this).initLoader(RULE_LOADER_ID, null, this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         requireActivity().setTitle(R.string.app_name);
-        LoaderManager.getInstance(this).getLoader(0).onContentChanged();
+        Loader<Object> loader = LoaderManager.getInstance(this).getLoader(RULE_LOADER_ID);
+        if (loader != null) {
+            loader.onContentChanged();
+        }
     }
 
     @Override
     public Loader<HashMap<String, ActRules>> onCreateLoader(int id, Bundle args) {
-        return new DataLoader(getContext());
+        return new DataLoader(requireContext());
     }
 
     @Override
@@ -133,7 +134,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                     icon = aInfo.loadIcon(pm);
                     label = aInfo.loadLabel(pm);
                 } catch (PackageManager.NameNotFoundException ignore) {
-                    icon = getResources().getDrawable(R.mipmap.ic_god);
+                    icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
                     label = packageName;
                 }
                 Preference preference = new Preference(category.getContext());
@@ -216,7 +217,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                     public void onClick(DialogInterface dialog, int which) {
                         XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
                         if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
-                            Intent launchIntent = getActivity().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
+                            Intent launchIntent = requireContext().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
                             startActivity(launchIntent);
                         } else {
                             Snackbar.make(requireActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
@@ -309,153 +310,85 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    public void onActivityResult(int requestCode, int resultCode, final Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_PICK_FILE && resultCode == Activity.RESULT_OK) {
-            handleIncomingIntent(data.getData());
-        }
-    }
-
-    public void dispatchOnNewIntent(Intent intent) {
-        Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        handleIncomingIntent(uri);
-    }
-
-    private void handleIncomingIntent(Uri uri) {
-        String fileName = getFileName(uri);
-        if (fileName.endsWith(".jpg")
-                || fileName.endsWith(".jpeg")
-                || fileName.endsWith(".png")
-                || fileName.endsWith(".webp")) {
-            handleImportViewRule(uri, false);
-        } else if (fileName.endsWith(".gm")) {
-            handleImportViewRule(uri, true);
-        } else {
-            Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_SHORT).show();
-        }
-    }
-
-    private void handleImportViewRule(Uri uri, boolean batchOperation) {
-        new ImportAsyncTask().execute(uri, batchOperation);
-    }
-
-    private String getFileName(Uri uri) {
-        if (uri != null) {
-            String uriStr = uri.toString();
-            if (uriStr.startsWith("file:")) {
-                return new File(uri.getPath()).getName();
-            } else if (uriStr.startsWith("content:")) {
-                Cursor cursor = getActivity().getContentResolver().query(uri, null, null, null, null);
-                if (cursor != null) {
-                    cursor.moveToFirst();
-                    String fileName = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-                    cursor.close();
-                    return fileName;
+            LoaderManager.getInstance(this).initLoader(IMPORT_LOADER_ID, null, new LoaderManager.LoaderCallbacks<Boolean>() {
+                @NonNull
+                @Override
+                public Loader<Boolean> onCreateLoader(int id, @Nullable Bundle args) {
+                    return new ImportTaskLoader(requireContext(), data.getData());
                 }
-            }
-        }
-        return "";
-    }
 
-    private final class ImportAsyncTask extends AsyncTask<Object, Integer, Boolean> {
-
-        ProgressDialog mProgressDialog;
-
-        @Override
-        protected Boolean doInBackground(Object[] args) {
-            Uri uri = (Uri) args[0];
-            boolean batchOperation = (boolean) args[1];
-            if (batchOperation) {
-                File cacheDir = null;
-                try {
-                    Context context = getActivity();
-                    cacheDir = new File(context.getExternalCacheDir(), "import-batch-cache");
-                    if (cacheDir.exists()) return null;//正在导入规则
-                    InputStream in = context.getContentResolver().openInputStream(uri);
-                    File dst = new File(cacheDir, System.currentTimeMillis() + "");
-                    if (!dst.exists()) dst.getParentFile().mkdirs();
-                    if (FileUtils.copy(in, dst)) {
-                        boolean successful = ZipUtils.uncompress(dst.getAbsolutePath(), dst.getParent());
-                        if (successful) {
-                            File[] files = cacheDir.listFiles(new FilenameFilter() {
-                                @Override
-                                public boolean accept(File dir, String name) {
-                                    return name.endsWith(".webp");
-                                }
-                            });
-                            publishProgress(files.length);
-                            for (int i = 0; i < files.length; i++) {
-                                processImportViewRule(Uri.fromFile(files[i]));
-                                publishProgress(i + 1);
-                            }
-                            return true;
+                @Override
+                public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean ok) {
+                    if (ok) {
+                        Loader<Object> ruleLoader = LoaderManager.getInstance(GeneralPreferenceFragment.this).getLoader(RULE_LOADER_ID);
+                        if (ruleLoader != null) {
+                            ruleLoader.onContentChanged();
                         }
                     }
-                } catch (FileNotFoundException ignore) {
-                    return false;
-                } finally {
-                    if (cacheDir != null)
-                        FileUtils.delete(cacheDir);
+                    Snackbar.make(requireActivity(), ok ? R.string.import_success : R.string.import_failed, Snackbar.LENGTH_LONG).show();
+                    LoaderManager.getInstance(GeneralPreferenceFragment.this).destroyLoader(IMPORT_LOADER_ID);
                 }
-            } else {
-                publishProgress(1);
-                boolean successful = processImportViewRule(uri);
-                publishProgress(1);
-                return successful;
+
+                @Override
+                public void onLoaderReset(@NonNull Loader<Boolean> loader) {
+                }
+            }).forceLoad();
+        }
+    }
+
+    private static final class ImportTaskLoader extends AsyncTaskLoader<Boolean> {
+
+        private final Uri uri;
+        private final ProgressDialog dialog;
+
+        public ImportTaskLoader(@NonNull Context context, Uri uri) {
+            super(context);
+            this.uri = uri;
+            dialog = new ProgressDialog(context);
+            dialog.setMessage(context.getText(R.string.dialog_title_import));
+            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            dialog.setCancelable(false);
+            dialog.setCanceledOnTouchOutside(false);
+            dialog.show();
+        }
+
+        @Override
+        protected void onStartLoading() {
+            super.onStartLoading();
+            if (!dialog.isShowing()) {
+                dialog.show();
+            }
+        }
+
+        @Override
+        public Boolean loadInBackground() {
+            try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
+                File file = new File(getContext().getCacheDir(), "rules.gm");
+                try {
+                    if (FileUtils.copy(in, file)) {
+                        return RuleHelper.importRules(file.getPath());
+                    }
+                } finally {
+                    FileUtils.delete(file);
+                }
+            } catch (Exception e) {
+                Logger.e(TAG, "import rules fail", e);
+                return false;
             }
             return false;
         }
 
         @Override
-        protected void onProgressUpdate(Integer... values) {
-            super.onProgressUpdate(values);
-            if (mProgressDialog == null) {
-                mProgressDialog = new ProgressDialog(getActivity());
-                mProgressDialog.setTitle(R.string.dialog_title_import);
-                mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-                mProgressDialog.setCancelable(false);
-                mProgressDialog.setCanceledOnTouchOutside(false);
-                mProgressDialog.setMax(values[0]);
-                mProgressDialog.setProgress(0);
-                mProgressDialog.show();
-            } else {
-                mProgressDialog.setProgress(values[0]);
+        public void deliverResult(@Nullable Boolean data) {
+            super.deliverResult(data);
+            if (dialog.isShowing()) {
+                dialog.dismiss();
             }
         }
 
-        @Override
-        protected void onPostExecute(Boolean successful) {
-            super.onPostExecute(successful);
-            if (mProgressDialog != null && mProgressDialog.isShowing())
-                mProgressDialog.dismiss();
-            if (successful) {
-                Snackbar.make(getActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
-                getActivity().getSupportLoaderManager().getLoader(0).onContentChanged();
-            } else {
-                Snackbar.make(getActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
-            }
-        }
-
-        private boolean processImportViewRule(Uri imgUri) {
-            try {
-                Bitmap fullImage = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), imgUri);
-                Bitmap splitImage = null;
-                try {
-                    Object[] array = Objects.requireNonNull(QRCodeFactory.decode(fullImage));
-                    ViewRule viewRule = (ViewRule) array[0];
-                    splitImage = (Bitmap) array[1];
-                    GodModeManager.getDefault().writeRule(viewRule.packageName, viewRule, splitImage);
-                    return true;
-                } finally {
-                    fullImage.recycle();
-                    if (splitImage != null)
-                        splitImage.recycle();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;
-            }
-        }
     }
 
 }

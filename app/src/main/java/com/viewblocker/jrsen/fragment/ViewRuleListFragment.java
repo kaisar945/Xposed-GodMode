@@ -1,15 +1,12 @@
 package com.viewblocker.jrsen.fragment;
 
-import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -20,6 +17,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.loader.content.Loader;
@@ -35,24 +33,24 @@ import com.viewblocker.jrsen.injection.util.FileUtils;
 import com.viewblocker.jrsen.rule.ActRules;
 import com.viewblocker.jrsen.rule.ViewRule;
 import com.viewblocker.jrsen.util.Preconditions;
-import com.viewblocker.jrsen.util.QRCodeFactory;
-import com.viewblocker.jrsen.util.ZipUtils;
+import com.viewblocker.jrsen.util.RuleHelper;
 import com.viewblocker.jrsen.widget.Snackbar;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
+
+import static com.viewblocker.jrsen.injection.util.CommonUtils.recycleBitmap;
 
 /**
  * Created by jrsen on 17-10-29.
  */
 
 public final class ViewRuleListFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceClickListener, AdapterDataObserver<ViewRule>, LoaderManager.LoaderCallbacks<List<ViewRule>> {
+
+    private static final int RULE_LIST_LOADER_ID = 0x01;
+    private static final int EXPORT_TASK_LOADER_ID = 0x02;
 
     private static final String EXTRA_RULE = "extra_rule";
     private final List<ViewRule> viewRules = new ArrayList<>();
@@ -77,7 +75,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setHasOptionsMenu(true);
         addPreferencesFromResource(R.xml.pref_empty);
-        LoaderManager.getInstance(this).initLoader(1, null, this);
+        LoaderManager.getInstance(this).initLoader(RULE_LIST_LOADER_ID, null, this);
     }
 
     @Override
@@ -89,7 +87,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        LoaderManager.getInstance(this).destroyLoader(1);
+        LoaderManager.getInstance(this).destroyLoader(RULE_LIST_LOADER_ID);
     }
 
     @Override
@@ -122,7 +120,26 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
                 Snackbar.make(requireActivity(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
             }
         } else if (item.getItemId() == R.id.menu_export_all_rules) {
-            new ExportAsyncTask().execute();
+            LoaderManager.getInstance(this).initLoader(EXPORT_TASK_LOADER_ID, null, new LoaderManager.LoaderCallbacks<String>() {
+                @NonNull
+                @Override
+                public Loader<String> onCreateLoader(int id, @Nullable Bundle args) {
+                    return new ExportTaskLoader(requireContext(), viewRules);
+                }
+
+                @Override
+                public void onLoadFinished(@NonNull Loader<String> loader, String filepath) {
+                    Snackbar.make(requireActivity(), FileUtils.exists(filepath)
+                            ? getString(R.string.export_successful, filepath)
+                            : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
+                    LoaderManager.getInstance(ViewRuleListFragment.this).destroyLoader(EXPORT_TASK_LOADER_ID);
+                }
+
+                @Override
+                public void onLoaderReset(@NonNull Loader<String> loader) {
+
+                }
+            }).forceLoad();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -174,7 +191,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
 
     @Override
     public Loader<List<ViewRule>> onCreateLoader(int id, Bundle args) {
-        return new RuleListLoader(getContext(), packageName.toString());
+        return new RuleListLoader(getContext(), packageName);
     }
 
     @Override
@@ -200,10 +217,10 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
 
     private static final class RuleListLoader extends AsyncTaskLoader<List<ViewRule>> {
 
-        private String packageName;
-        private ProgressDialog dialog;
+        private final CharSequence packageName;
+        private final ProgressDialog dialog;
 
-        public RuleListLoader(Context context, String packageName) {
+        public RuleListLoader(Context context, CharSequence packageName) {
             super(context);
             this.packageName = packageName;
             dialog = new ProgressDialog(context);
@@ -225,7 +242,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
         @Override
         public List<ViewRule> loadInBackground() {
             GodModeManager manager = GodModeManager.getDefault();
-            ActRules actRules = manager.getRules(packageName);
+            ActRules actRules = manager.getRules(packageName.toString());
             ArrayList<ViewRule> viewRules = new ArrayList<>();
             for (List<ViewRule> values : actRules.values()) {
                 viewRules.addAll(values);
@@ -243,9 +260,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
                     try {
                         Bitmap snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
                         Bitmap thumbnail = Bitmap.createBitmap(snapshot, viewRule.x, viewRule.y, viewRule.width, viewRule.height);
-                        if (thumbnail != snapshot) {
-                            snapshot.recycle();
-                        }
+                        viewRule.snapshot = snapshot;
                         viewRule.thumbnail = thumbnail;
                     } finally {
                         parcelFileDescriptor.close();
@@ -269,83 +284,51 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
 
         private void releaseResources(List<ViewRule> data) {
             for (ViewRule rule : data) {
-                if (Preconditions.checkBitmap(rule.thumbnail)) {
-                    rule.thumbnail.recycle();
-                }
+                recycleBitmap(rule.snapshot);
+                recycleBitmap(rule.thumbnail);
             }
         }
     }
 
-    @SuppressLint("StaticFieldLeak")
-    private class ExportAsyncTask extends AsyncTask<Void, Integer, Object[]> {
+    private static final class ExportTaskLoader extends AsyncTaskLoader<String> {
 
-        ProgressDialog mProgressDialog;
+        private final List<ViewRule> viewRules;
+        private final ProgressDialog dialog;
 
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mProgressDialog = new ProgressDialog(getActivity());
-            mProgressDialog.setTitle(getResources().getString(R.string.dialog_title_export, label));
-            mProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-            mProgressDialog.setCancelable(false);
-            mProgressDialog.setCanceledOnTouchOutside(false);
-            mProgressDialog.setMax(viewRules.size());
-            mProgressDialog.setProgress(0);
-            mProgressDialog.show();
+
+        public ExportTaskLoader(@NonNull Context context, List<ViewRule> viewRules) {
+            super(context);
+            this.viewRules = viewRules;
+            dialog = new ProgressDialog(context);
+            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            dialog.setCancelable(false);
+            dialog.setCanceledOnTouchOutside(false);
+            dialog.setMessage(context.getResources().getString(R.string.dialog_title_export));
         }
 
         @Override
-        protected Object[] doInBackground(Void... voids) {
-            File godModeDir = Environment.getExternalStoragePublicDirectory("GodMode");
-            File cacheDir = new File(godModeDir, ".cache");
-            if (cacheDir.exists() || cacheDir.mkdirs()) {
-                ArrayList<String> filepathlist = new ArrayList<>();
-                final int N = viewRules.size();
-                for (int i = 0; i < N; i++) {
-                    try {
-                        ViewRule viewRule = viewRules.get(i);
-                        Bitmap ruleImage = Objects.requireNonNull(QRCodeFactory.encode(viewRule));
-                        File file = new File(cacheDir, System.currentTimeMillis() + ".webp");
-                        try (FileOutputStream out = new FileOutputStream(file)) {
-                            if (!ruleImage.compress(Bitmap.CompressFormat.WEBP, 100, out)) {
-                                return new Object[]{false, null};
-                            }
-                            filepathlist.add(file.getAbsolutePath());
-                            publishProgress(i + 1);
-                        } finally {
-                            ruleImage.recycle();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                String zipFile = new File(godModeDir, packageName + ".gm").getAbsolutePath();
-                if (FileUtils.exists(zipFile)) FileUtils.delete(zipFile);
-                String[] filepaths = filepathlist.toArray(new String[0]);
-                boolean successful = ZipUtils.compress(zipFile, filepaths);
-                FileUtils.delete(cacheDir);
-                return new Object[]{successful, zipFile};
+        protected void onStartLoading() {
+            super.onStartLoading();
+            if (dialog.isShowing()) {
+                dialog.dismiss();
             }
-            return new Object[]{false, null};
+            dialog.show();
+        }
+
+        @Nullable
+        @Override
+        public String loadInBackground() {
+            return RuleHelper.exportRules(viewRules.toArray(new ViewRule[0]));
         }
 
         @Override
-        protected void onProgressUpdate(Integer... values) {
-            super.onProgressUpdate(values);
-            mProgressDialog.setProgress(values[0]);
+        public void deliverResult(String filepath) {
+            super.deliverResult(filepath);
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
         }
 
-        @Override
-        protected void onPostExecute(Object[] result) {
-            super.onPostExecute(result);
-            if (mProgressDialog != null && mProgressDialog.isShowing())
-                mProgressDialog.dismiss();
-            boolean successful = (boolean) result[0];
-            String filePath = (String) result[1];
-            Snackbar.make(requireActivity(), successful
-                    ? getString(R.string.export_successful, filePath)
-                    : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
-        }
     }
 
 }
