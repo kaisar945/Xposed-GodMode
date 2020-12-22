@@ -4,6 +4,7 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.TextUtils;
 import android.view.View;
 
 import androidx.annotation.Keep;
@@ -12,7 +13,6 @@ import androidx.annotation.NonNull;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 /**
  * Created by jrsen on 17-10-14.
@@ -25,6 +25,9 @@ public final class ViewRule implements Parcelable, Cloneable {
     //控件缩略图
     public transient Bitmap thumbnail;
 
+    //生成规则的应用名称
+    @SerializedName("label")
+    public final String label;
     //生成规则的应用包名
     @SerializedName("package_name")
     public final String packageName;
@@ -79,7 +82,8 @@ public final class ViewRule implements Parcelable, Cloneable {
     @SerializedName("timestamp")
     public final long timestamp;
 
-    public ViewRule(String packageName, String matchVersionName, int matchVersionCode, int versionCode, String imagePath, String alias, int x, int y, int width, int height, int[] depth, String activityClass, String viewClass, String resourceName, String text, String description, int visibility, long timestamp) {
+    public ViewRule(String label, String packageName, String matchVersionName, int matchVersionCode, int versionCode, String imagePath, String alias, int x, int y, int width, int height, int[] depth, String activityClass, String viewClass, String resourceName, String text, String description, int visibility, long timestamp) {
+        this.label = label;
         this.packageName = packageName;
         this.matchVersionName = matchVersionName;
         this.matchVersionCode = matchVersionCode;
@@ -101,6 +105,7 @@ public final class ViewRule implements Parcelable, Cloneable {
     }
 
     protected ViewRule(Parcel in) {
+        label = in.readString();
         packageName = in.readString();
         matchVersionName = in.readString();
         matchVersionCode = in.readInt();
@@ -123,6 +128,7 @@ public final class ViewRule implements Parcelable, Cloneable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(label);
         dest.writeString(packageName);
         dest.writeString(matchVersionName);
         dest.writeInt(matchVersionCode);
@@ -164,6 +170,7 @@ public final class ViewRule implements Parcelable, Cloneable {
     @Override
     public ViewRule clone() {
         ViewRule viewRule = new ViewRule(
+                label,
                 packageName,
                 matchVersionName,
                 matchVersionCode,
@@ -188,16 +195,14 @@ public final class ViewRule implements Parcelable, Cloneable {
     }
 
     public int getViewId(Resources res) {
-        try {
-            Objects.requireNonNull(resourceName);
+        if (!TextUtils.isEmpty(resourceName)) {
             String[] start = resourceName.split(":");
             String[] end = start[1].split("/");
             String resourcePackageName = start[0];
             String resourceTypeName = end[0];
             String resourceEntryName = end[1];
             return res.getIdentifier(resourceEntryName, resourceTypeName, resourcePackageName);
-        } catch (Exception e) {
-            e.printStackTrace();
+        } else {
             return View.NO_ID;
         }
     }
@@ -226,7 +231,9 @@ public final class ViewRule implements Parcelable, Cloneable {
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer("ViewRule{");
-        sb.append("thumbnail=").append(thumbnail);
+        sb.append("snapshot=").append(snapshot);
+        sb.append(", thumbnail=").append(thumbnail);
+        sb.append(", label='").append(label).append('\'');
         sb.append(", packageName='").append(packageName).append('\'');
         sb.append(", matchVersionName='").append(matchVersionName).append('\'');
         sb.append(", matchVersionCode=").append(matchVersionCode);

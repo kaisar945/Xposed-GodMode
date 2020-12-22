@@ -61,8 +61,10 @@ public final class RuleHelper {
                 File manifestFile = new File(TEMP_DIR, MANIFEST);
                 FileUtils.stringToFile(manifestFile, jsonArray.toString());
                 filepaths.add(manifestFile.getPath());
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddhhmmss", Locale.US);
-                String zipFile = new File(EXPORT_DIR, sdf.format(new Date()) + PACK_SUFFIX).getAbsolutePath();
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US);
+                ViewRule viewRule = viewRules[0];
+                String filename = String.format("%s(%s)-%s%s", viewRule.label, viewRule.matchVersionName, sdf.format(new Date()), PACK_SUFFIX);
+                String zipFile = new File(EXPORT_DIR, filename).getAbsolutePath();
                 if (ZipUtils.compress(zipFile, filepaths.toArray(new String[0]))) {
                     return zipFile;
                 }
@@ -79,9 +81,9 @@ public final class RuleHelper {
     public static boolean importRules(String filepath) {
         FileUtils.rmdir(TEMP_DIR.getPath());
         if (TEMP_DIR.mkdirs() && ZipUtils.uncompress(filepath, TEMP_DIR.getPath())) {
-            File manifestFile = new File(TEMP_DIR, MANIFEST);
-            if (manifestFile.exists()) {
-                try {
+            try {
+                File manifestFile = new File(TEMP_DIR, MANIFEST);
+                if (manifestFile.exists()) {
                     String json = FileUtils.readTextFile(manifestFile, 0, null);
                     JsonArray jsonArray = (JsonArray) JsonParser.parseString(json);
                     Iterator<JsonElement> iterator = jsonArray.iterator();
@@ -94,9 +96,11 @@ public final class RuleHelper {
                         recycleBitmap(bitmap);
                     }
                     return true;
-                } catch (IOException e) {
-                    Logger.e(TAG, "import rules fail", e);
                 }
+            } catch (Exception e) {
+                Logger.e(TAG, "import rules fail", e);
+            } finally {
+                FileUtils.rmdir(TEMP_DIR.getPath());
             }
         }
         return false;

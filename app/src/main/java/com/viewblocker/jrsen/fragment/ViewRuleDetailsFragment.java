@@ -3,6 +3,9 @@ package com.viewblocker.jrsen.fragment;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -22,7 +25,6 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.viewblocker.jrsen.R;
 import com.viewblocker.jrsen.adapter.AdapterDataObserver;
-import com.viewblocker.jrsen.injection.ViewHelper;
 import com.viewblocker.jrsen.injection.bridge.GodModeManager;
 import com.viewblocker.jrsen.preference.ImageViewPreference;
 import com.viewblocker.jrsen.rule.ViewRule;
@@ -252,7 +254,11 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
             }
             if (snapshot != null) {
                 Bitmap copySnapshot = snapshot.copy(snapshot.getConfig(), true);
-                ViewHelper.markViewBounds(copySnapshot, viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
+                Paint markPaint = new Paint();
+                markPaint.setColor(Color.RED);
+                markPaint.setAlpha(100);
+                Canvas canvas = new Canvas(copySnapshot);
+                canvas.drawRect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height, markPaint);
                 return copySnapshot;
             }
             return null;

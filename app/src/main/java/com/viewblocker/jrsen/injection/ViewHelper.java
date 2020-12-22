@@ -204,18 +204,10 @@ public final class ViewHelper {
         String alias = !TextUtils.isEmpty(text) ? text : description;
         String packageName = context.getPackageName();
         PackageInfo packageInfo = context.getPackageManager().getPackageInfo(packageName, 0);
+        String label = packageInfo.applicationInfo.loadLabel(context.getPackageManager()).toString();
         String versionName = packageInfo.versionName;
         int versionCode = packageInfo.versionCode;
-        return new ViewRule(packageName, versionName, versionCode, BuildConfig.VERSION_CODE, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
-    }
-
-    public static Bitmap markViewBounds(Bitmap bitmap, int left, int top, int right, int bottom) {
-        Paint markPaint = new Paint();
-        markPaint.setColor(Color.RED);
-        markPaint.setAlpha(100);
-        Canvas canvas = new Canvas(bitmap);
-        canvas.drawRect(left, top, right, bottom, markPaint);
-        return bitmap;
+        return new ViewRule(label, packageName, versionName, versionCode, BuildConfig.VERSION_CODE, "", alias, x, y, width, height, viewHierarchyDepth, activityClassName, viewClassName, resourceName, text, description, View.INVISIBLE, System.currentTimeMillis());
     }
 
     public static Activity getAttachedActivityFromView(View view) {
