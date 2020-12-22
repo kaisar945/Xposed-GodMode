@@ -83,10 +83,18 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
         super.onResume();
         requireActivity().setTitle(R.string.title_app_rule);
     }
-
+    
     @Override
-    public void onDestroyView() {
-        super.onDestroyView();
+    public void onDestroy() {
+        super.onDestroy();
+        for (ViewRule viewRule : viewRules) {
+            if (Preconditions.checkBitmap(viewRule.thumbnail)) {
+                recycleBitmap(viewRule.thumbnail);
+            }
+            if (Preconditions.checkBitmap(viewRule.snapshot)) {
+                recycleBitmap(viewRule.snapshot);
+            }
+        }
         LoaderManager.getInstance(this).destroyLoader(RULE_LIST_LOADER_ID);
     }
 
@@ -303,7 +311,7 @@ public final class ViewRuleListFragment extends PreferenceFragmentCompat impleme
             dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
             dialog.setCancelable(false);
             dialog.setCanceledOnTouchOutside(false);
-            dialog.setMessage(context.getResources().getString(R.string.dialog_title_export));
+            dialog.setMessage(context.getResources().getString(R.string.dialog_message_export));
         }
 
         @Override

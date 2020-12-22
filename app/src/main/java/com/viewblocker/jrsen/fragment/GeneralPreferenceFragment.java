@@ -348,7 +348,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             super(context);
             this.uri = uri;
             dialog = new ProgressDialog(context);
-            dialog.setMessage(context.getText(R.string.dialog_title_import));
+            dialog.setMessage(context.getText(R.string.dialog_message_import));
             dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
             dialog.setCancelable(false);
             dialog.setCanceledOnTouchOutside(false);

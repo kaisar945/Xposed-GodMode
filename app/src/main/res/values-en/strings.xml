@@ -31,7 +31,7 @@
     <string name="manage">Manager</string>
     <string name="import_failed">Import failed</string>
     <string name="import_success">Import success</string>
-    <string name="dialog_title_import">Importing…</string>
+    <string name="dialog_message_import">Importing…</string>
     <string name="export_failed">Export failed</string>
     <string name="menu_title_purge_all_rules">Revoke all rule</string>
     <string name="menu_export_all_rules">Export all rule</string>
@@ -44,7 +44,7 @@
     <string name="donate_thanks">Thanks for supporting my work</string>
     <string name="xposed_description">Like God, Remove any elements on the interface that you don’t like</string>
     <string name="export_successful">Export success %1$s</string>
-    <string name="dialog_title_export">Exporting rules…</string>
+    <string name="dialog_message_export">Exporting rules…</string>
     <string name="menu_title_import_view_rule_description">"Select import rule image "</string>
     <string name="field_activity">Activity:%1$s</string>
     <string name="field_view">View:%1$s</string>

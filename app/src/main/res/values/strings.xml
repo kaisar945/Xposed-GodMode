@@ -45,11 +45,11 @@
     <string name="field_activity">依附界面:%1$s</string>
     <string name="field_view">控件类型:%1$s</string>
 
-    <string name="dialog_title_export">嘿 伙计别着急我想这应该不会太久…</string>
+    <string name="dialog_message_export">嘿 伙计! 别着急看起来就快成功了</string>
     <string name="export_successful">导出成功,文件路径:%1$s</string>
     <string name="export_failed">导出失败</string>
 
-    <string name="dialog_title_import">正在导入应用规则…</string>
+    <string name="dialog_message_import">@string/dialog_message_export</string>
     <string name="import_success">导入规则成功</string>
     <string name="import_failed">导入规则失败</string>
 
@@ -64,7 +64,7 @@
     <string name="share_crash_info">复制给我的老伙计</string>
     <string name="crash_tip">\"    我想 你遇到些麻烦 说实话我真不想看到这样情况但是它的确出现了 噢 我亲爱的上帝也不能保佑它可以完美的运行 是的 我保证 不过你应该告诉我也许可以试试修复\n\n\"</string>
     <string name="wechat_donate_tips">伙计 二维码已经放到相册了 点击+号扫一扫从相册选取</string>
-    <string name="update_tips">\t我想你可以试试用上帝模式屏蔽一些令人烦恼的按钮。噢！没错这听起来很有趣。不过这个小家伙有时会像汤姆家那只该死的倔驴一样不听话，别担心伙计们，我会尽快修理好的！\n\n\t伙计们玩的开心记得支持一下你们的老伙计 非常感谢！噢 上帝啊 看看我到底在说些什么我想我应该安静一下...</string>
+    <string name="update_tips">\t我想你可以试试用上帝模式屏蔽一些令人烦恼的按钮。噢！没错这听起来很有趣。不过这个小家伙有时会像汤姆家那只该死的倔驴一样不听话，别担心伙计们，我会尽快修理好的！\n\n\t伙计们玩的开心记得支持一下你们的老伙计 非常感谢！噢 上帝啊 看看我到底在说些什么我想我应该安静一下…</string>
     <string name="rule_details_field_create_time">创建日期</string>
     <string name="rule_details_field_generate_version">生成版本</string>
     <string name="rule_details_field_activity">依附界面</string>
