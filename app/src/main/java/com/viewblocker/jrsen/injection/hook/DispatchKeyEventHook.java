@@ -100,6 +100,8 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                         final View view = mViewNodes.get(mCurrentViewIndex).get();
                         Logger.d(TAG, "removed view = " + view);
                         if (view != null) {
+                            //hide overlay
+                            mMaskView.updateOverlayBounds(new Rect());
                             final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
                             final ViewRule viewRule = ViewHelper.makeRule(view);
                             final ParticleView particleView = new ParticleView(activity);
@@ -108,8 +110,6 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                             particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
                                 @Override
                                 public void onAnimationStart(View animView, Animator animation) {
-                                    //hide overlay
-                                    mMaskView.updateOverlayBounds(new Rect());
                                     viewRule.visibility = View.GONE;
                                     ViewController.applyRule(view, viewRule);
                                 }

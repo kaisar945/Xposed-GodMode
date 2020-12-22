@@ -183,7 +183,6 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     public void onDestroy() {
         super.onDestroy();
         dataObserver = null;
-        LoaderManager.getInstance(this).destroyLoader(0);
     }
 
     @Override
@@ -219,6 +218,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
             preference.setDefaultValue(data);
             getPreferenceScreen().addPreference(preference);
         }
+        LoaderManager.getInstance(this).destroyLoader(0);
     }
 
     @Override
@@ -263,7 +263,5 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
             }
             return null;
         }
-
-
     }
 }
