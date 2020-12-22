@@ -285,7 +285,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         MenuItem item = menu.findItem(R.id.menu_icon_switch);
         Context context = requireContext();
         PackageManager pm = context.getPackageManager();
-        ComponentName cmp = new ComponentName(context.getPackageName(), "com.viewblocker.jrsen.SettingsAliasActivity");
+        ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
         boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
         item.setTitle(enable ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
     }
@@ -300,7 +300,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else if (item.getItemId() == R.id.menu_icon_switch) {
             Context context = requireContext();
             PackageManager pm = context.getPackageManager();
-            ComponentName cmp = new ComponentName(context.getPackageName(), "com.viewblocker.jrsen.SettingsAliasActivity");
+            ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
             boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
             pm.setComponentEnabledSetting(cmp, enable ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
             enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;

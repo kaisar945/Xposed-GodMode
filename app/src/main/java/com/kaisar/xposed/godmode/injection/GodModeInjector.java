@@ -16,7 +16,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.kaisar.xservicemanager.XServiceManager;
 import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
@@ -30,6 +29,8 @@ import com.kaisar.xposed.godmode.injection.util.PackageManagerUtils;
 import com.kaisar.xposed.godmode.injection.util.Property;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.service.GodModeManagerService;
+import com.kaisar.xposed.godmode.util.XposedEnvironment;
+import com.kaisar.xservicemanager.XServiceManager;
 
 import java.util.List;
 
@@ -83,7 +84,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
                 break;
             case BuildConfig.APPLICATION_ID:
                 // running in manager process for check module active
-                XposedHelpers.findAndHookMethod("com.viewblocker.jrsen.util.XposedEnvironment", loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
+                XposedHelpers.findAndHookMethod(XposedEnvironment.class.getName(), loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
                 break;
             default:
                 // running in other app process for enable godmode
