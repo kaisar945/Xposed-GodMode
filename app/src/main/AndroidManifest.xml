@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="com.viewblocker.jrsen">
+        package="com.kaisar.xposed.godmode">
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission-sdk-23 android:name="android.permission.FOREGROUND_SERVICE" />
@@ -62,7 +62,7 @@
                 android:value="53" />
         <meta-data
                 android:name="xposed_init"
-                android:value="com.viewblocker.jrsen.injection.GodModeInjector" />
+                android:value="com.kaisar.xposed.godmode.injection.GodModeInjector" />
     </application>
 
 </manifest>
