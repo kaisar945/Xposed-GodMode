@@ -85,5 +85,6 @@
 
     <string name="accessibility_block">屏蔽</string>
     <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
+    <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
 
 </resources>

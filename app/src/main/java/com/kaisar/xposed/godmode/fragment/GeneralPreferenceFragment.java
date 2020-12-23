@@ -17,6 +17,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -32,6 +33,9 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
@@ -45,8 +49,11 @@ import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
@@ -193,7 +200,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     @Override
     public boolean onPreferenceClick(Preference preference) {
         if (mJoinQQGroupPreference == preference) {
-            showJoinGroupDialog();
+            showGroupInfoDialog();
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(getContext());
         } else {
@@ -254,20 +261,70 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         dialog.show();
     }
 
-    private void showJoinGroupDialog() {
-        new AlertDialog.Builder(requireContext())
-                .setItems(R.array.qq_groups_name, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        try {
-                            String[] links = getResources().getStringArray(R.array.qq_groups_link);
-                            Intent intent = new Intent(Intent.ACTION_VIEW);
-                            intent.setData(Uri.parse(links[which]));
-                            startActivity(intent);
-                        } catch (Exception ignore) {
-                        }
+    private void showGroupInfoDialog() {
+        final ProgressDialog progressDialog = new ProgressDialog(requireContext());
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progressDialog.setMessage(getText(R.string.dialog_message_query_community));
+        progressDialog.show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL("https://github.com/kaisar945/Xposed-GodMode/raw/dev/community.json");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode != HttpURLConnection.HTTP_OK) {
+                        throw new Exception("retrieve response error " + responseCode);
                     }
-                }).show();
+                    InputStream in = conn.getInputStream();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[4096];
+                    for (int len; (len = in.read(buffer)) > 0; ) {
+                        baos.write(buffer, 0, len);
+                    }
+                    String json = new String(baos.toByteArray());
+                    JsonArray jsonArray = (JsonArray) JsonParser.parseString(json);
+                    int size = jsonArray.size();
+                    final String[] names = new String[size];
+                    final String[] links = new String[size];
+                    for (int i = 0; i < size; i++) {
+                        JsonObject jsonObject = (JsonObject) jsonArray.get(i);
+                        names[i] = jsonObject.get("group_name").getAsString();
+                        links[i] = jsonObject.get("group_link").getAsString();
+                    }
+                    requireActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (progressDialog.isShowing()) {
+                                progressDialog.dismiss();
+                            }
+                            new AlertDialog.Builder(requireContext())
+                                    .setItems(names, new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            try {
+                                                Intent intent = new Intent(Intent.ACTION_VIEW);
+                                                intent.setData(Uri.parse(links[which]));
+                                                startActivity(intent);
+                                            } catch (Exception ignore) {
+                                            }
+                                        }
+                                    }).show();
+                        }
+                    });
+                } catch (final Exception e) {
+                    requireActivity().runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (progressDialog.isShowing()) {
+                                progressDialog.dismiss();
+                            }
+                            Toast.makeText(requireContext(), "获取群组信息失败" + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     @Override
