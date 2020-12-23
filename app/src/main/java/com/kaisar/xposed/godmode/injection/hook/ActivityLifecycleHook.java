@@ -20,6 +20,8 @@ import java.util.WeakHashMap;
 
 import de.robv.android.xposed.XC_MethodHook;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+
 /**
  * Created by jrsen on 17-10-15.
  */
@@ -43,11 +45,11 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
                 decorView.getViewTreeObserver().addOnGlobalLayoutListener(listener);
                 sActivities.put(activity, listener);
             }
-            Logger.d("ActivityHook", "resume:" + sActivities);
+            Logger.d(TAG, "resume:" + sActivities);
         } else if ("onDestroy".equals(methodName)) {
             OnLayoutChangeListener listener = sActivities.remove(activity);
             decorView.getViewTreeObserver().removeOnGlobalLayoutListener(listener);
-            Logger.d("ActivityHook", "destroy:" + sActivities);
+            Logger.d(TAG, "destroy:" + sActivities);
         }
     }
 
@@ -97,7 +99,7 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
 
         @Override
         public void onGlobalLayout() {
-            Logger.d("ViewBlocker", "onGlobalLayout");
+            Logger.d(TAG, "onGlobalLayout");
             applyRuleIfMatchCondition();
         }
 

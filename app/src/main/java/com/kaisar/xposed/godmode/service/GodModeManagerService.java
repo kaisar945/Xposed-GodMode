@@ -274,11 +274,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             }
             viewRules.add(viewRule);
             mHandle.obtainMessage(WRITE_RULE, new Object[]{actRules, packageName, viewRule, snapshot}).sendToTarget();
-            //If the operation comes from within the app, the caller should not be notified
-            String callerPackage = mContext.getPackageManager().getNameForUid(Binder.getCallingUid());
-            if (!TextUtils.equals(callerPackage, packageName)) {
-                notifyObserverRuleChanged(packageName, actRules);
-            }
+            notifyObserverRuleChanged(packageName, actRules);
             return true;
         } catch (Exception e) {
             e.printStackTrace();

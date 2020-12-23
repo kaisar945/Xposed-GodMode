@@ -136,6 +136,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             mMaskView = MaskView.makeMaskView(activity);
             mMaskView.setMaskOverlay(v);
             mMaskView.setMarkColor(MARK_COLOR);
+            mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(v));
             mMaskView.attachToContainer(container);
 
             mSnapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));

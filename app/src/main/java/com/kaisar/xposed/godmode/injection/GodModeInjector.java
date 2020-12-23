@@ -52,9 +52,19 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
     public final static Property<Boolean> switchProp = new Property<>();
     public final static Property<ActRules> actRuleProp = new Property<>();
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
+    private static State state = State.UNKNOWN;
+
+    enum State {
+        UNKNOWN,
+        ALLOWED,
+        BLOCKED
+    }
 
     public static void notifyEditModeChanged(boolean enable) {
-        if (!checkBlockList(loadPackageParam.packageName)) {
+        if (state == State.UNKNOWN) {
+            state = checkBlockList(loadPackageParam.packageName) ? State.BLOCKED : State.ALLOWED;
+        }
+        if (state == State.ALLOWED) {
             switchProp.set(enable);
         }
     }
@@ -71,9 +81,8 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         GodModeInjector.loadPackageParam = loadPackageParam;
         final String packageName = loadPackageParam.packageName;
         switch (packageName) {
-            case "android":
-                // running in system_server process for register GodMode service
-                Logger.i(TAG, "inject GodModeManagerService as system service.");
+            case "android"://Run in system process
+                Logger.d(TAG, "inject GodModeManagerService as system service.");
                 XServiceManager.initForSystemServer();
                 XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<Binder>() {
                     @Override
@@ -81,22 +90,16 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
                         return new GodModeManagerService(ctx);
                     }
                 });
-                break;
-            case BuildConfig.APPLICATION_ID:
-                // running in manager process for check module active
+                return;
+            case BuildConfig.APPLICATION_ID://Run in God's management process
                 XposedHelpers.findAndHookMethod(XposedEnvironment.class.getName(), loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
-                break;
-            default:
-                // running in other app process for enable godmode
-                if (checkBlockList(loadPackageParam.packageName)) {
-                    Logger.i(TAG, String.format("%s in block list.", loadPackageParam.packageName));
-                    return;
-                }
-                initHook();
-                GodModeManager manager = GodModeManager.getDefault();
-                manager.addObserver(loadPackageParam.packageName, new ManagerObserver());
-                switchProp.set(manager.isInEditMode());
-                actRuleProp.set(manager.getRules(loadPackageParam.packageName));
+                return;
+            default://Run in other application processes
+                registerHook();
+                GodModeManager gmManager = GodModeManager.getDefault();
+                gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
+                switchProp.set(gmManager.isInEditMode());
+                actRuleProp.set(gmManager.getRules(loadPackageParam.packageName));
                 break;
         }
     }
@@ -152,7 +155,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         return false;
     }
 
-    private void initHook() {
+    private void registerHook() {
         //hook activity#lifecycle block view
         ActivityLifecycleHook lifecycleHook = new ActivityLifecycleHook();
         actRuleProp.addOnPropertyChangeListener(lifecycleHook);
