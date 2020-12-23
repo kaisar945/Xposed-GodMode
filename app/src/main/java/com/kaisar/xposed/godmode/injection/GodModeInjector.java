@@ -163,7 +163,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         if (Build.VERSION.SDK_INT < 29) {
             SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
             switchProp.addOnPropertyChangeListener(systemPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "getBoolean", String.class, boolean.class, systemPropertiesHook);
+            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "native_get_boolean", String.class, boolean.class, systemPropertiesHook);
         } else {
             DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
             switchProp.addOnPropertyChangeListener(displayPropertiesHook);

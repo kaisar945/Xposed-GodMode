@@ -15,9 +15,6 @@ import de.robv.android.xposed.XposedHelpers;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
-/**
- * 不知道为什么在Android Q中并未发现DisplayProperties代码很奇怪
- */
 public final class DisplayPropertiesHook extends XC_MethodHook implements Property.OnPropertyChangeListener<Boolean> {
 
     private boolean mDebugLayout;
