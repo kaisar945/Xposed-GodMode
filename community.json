@@ -12,6 +12,10 @@
     "group_link": "mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3DOtAchFbmb1X2nThnYoKWk9nCFk3PbCAs"
   },
   {
+    "group_name": "上帝微信群",
+    "group_link": "https://github.com/kaisar945/Xposed-GodMode/raw/dev/wechat_community.png"
+  },
+  {
     "group_name": "Telegram频道",
     "group_link": "https://t.me/joinchat/IW6X0FQ-u6ocwUNyQdQDTg"
   }
