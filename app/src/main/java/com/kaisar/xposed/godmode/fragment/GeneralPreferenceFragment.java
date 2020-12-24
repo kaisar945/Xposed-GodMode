@@ -270,7 +270,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             @Override
             public void run() {
                 try {
-                    URL url = new URL("https://github.com/kaisar945/Xposed-GodMode/raw/dev/community.json");
+                    URL url = new URL("https://gitee.com/kaisarzu/Xposed-GodMode/raw/dev/community.json");
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                     int responseCode = conn.getResponseCode();
                     if (responseCode != HttpURLConnection.HTTP_OK) {
