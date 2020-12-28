@@ -55,20 +55,29 @@ public final class ViewHelper {
                 Logger.w(TAG, "See what happened!", e);
             }
         }
-        View view;
         if (!TextUtils.isEmpty(rule.description)) {
             Logger.i(TAG, String.format("strict mode %b, match view by description", strictMode));
-            view = matchView(findViewByDescription(activity.getWindow().getDecorView(), rule.description), rule, strictMode);
-        } else if (!TextUtils.isEmpty(rule.text)) {
-            Logger.i(TAG, String.format("strict mode %b, match view by text", strictMode));
-            view = matchView(findViewByText(activity.getWindow().getDecorView(), rule.text), rule, strictMode);
-        } else if (!TextUtils.isEmpty(rule.resourceName)) {
-            Logger.i(TAG, String.format("strict mode %b, match view by resource name", strictMode));
-            view = matchView(activity.findViewById(rule.getViewId(activity.getResources())), rule, strictMode);
-        } else {
-            Logger.i(TAG, String.format("strict mode %b, match view by depth", strictMode));
-            view = matchView(findViewByDepth(activity, rule.depth), rule, strictMode);
+            View view = matchView(findViewByDescription(activity.getWindow().getDecorView(), rule.description), rule, strictMode);
+            if (view != null) {
+                return view;
+            }
         }
+        if (!TextUtils.isEmpty(rule.text)) {
+            Logger.i(TAG, String.format("strict mode %b, match view by text", strictMode));
+            View view = matchView(findViewByText(activity.getWindow().getDecorView(), rule.text), rule, strictMode);
+            if (view != null) {
+                return view;
+            }
+        }
+        if (!TextUtils.isEmpty(rule.resourceName)) {
+            Logger.i(TAG, String.format("strict mode %b, match view by resource name", strictMode));
+            View view = matchView(activity.findViewById(rule.getViewId(activity.getResources())), rule, strictMode);
+            if (view != null) {
+                return view;
+            }
+        }
+        Logger.i(TAG, String.format("strict mode %b, match view by depth", strictMode));
+        View view = matchView(findViewByDepth(activity, rule.depth), rule, strictMode);
         return view;
     }
 

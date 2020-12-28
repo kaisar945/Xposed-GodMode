@@ -5,9 +5,11 @@ import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.HapticFeedbackConstants;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -16,10 +18,11 @@ import android.view.ViewParent;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import com.kaisar.xposed.godmode.injection.GodModeInjector;
 import com.kaisar.xposed.godmode.injection.ViewController;
 import com.kaisar.xposed.godmode.injection.ViewHelper;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+import com.kaisar.xposed.godmode.injection.util.Logger;
+import com.kaisar.xposed.godmode.injection.util.Property;
 import com.kaisar.xposed.godmode.injection.weiget.CancelView;
 import com.kaisar.xposed.godmode.injection.weiget.MaskView;
 import com.kaisar.xposed.godmode.injection.weiget.ParticleView;
@@ -27,10 +30,13 @@ import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 import static com.kaisar.xposed.godmode.injection.ViewHelper.TAG_GM_CMP;
 import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
 
@@ -38,10 +44,12 @@ import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap
  * Created by jrsen on 17-12-6.
  */
 
-public final class DispatchTouchEventHook extends XC_MethodHook {
+public final class EventHandlerHook extends XC_MethodHook implements Property.OnPropertyChangeListener<Boolean> {
 
-    private final int MARK_COLOR = Color.argb(150, 139, 195, 75);
+    private static final int MARK_COLOR = Color.argb(150, 139, 195, 75);
+    private static final int OVERLAY_COLOR = Color.argb(150, 255, 0, 0);
 
+    private boolean mIsInEditMode;
     private float mX, mY;
     private Bitmap mSnapshot;
     private ViewRule mViewRule;
@@ -53,21 +61,35 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
     private volatile boolean mMultiPointLock;
+    private volatile boolean mDragging;
 
-    public static volatile boolean mDragging;
+    private final List<WeakReference<View>> mViewNodes = new ArrayList<>();
+    private int mCurrentViewIndex = 0;
+    private volatile boolean mKeySelecting;
 
     @Override
     protected void beforeHookedMethod(MethodHookParam param) {
-        View view = (View) param.thisObject;
-        MotionEvent event = (MotionEvent) param.args[0];
-        if (GodModeInjector.switchProp.get() && !TAG_GM_CMP.equals(view.getTag())) {
-            if (DispatchKeyEventHook.mKeySelecting) {
-                param.setResult(true);
-            } else {
+        if (!mIsInEditMode) return;
+        String methodName = param.method.getName();
+        if ("dispatchKeyEvent".equals(methodName)) {
+            if (!mDragging) {
+                Activity activity = (Activity) param.thisObject;
+                KeyEvent event = (KeyEvent) param.args[0];
+                param.setResult(dispatchKeyEvent(activity, event));
+            }
+        } else if ("dispatchTouchEvent".equals(methodName)) {
+            View view = (View) param.thisObject;
+            MotionEvent event = (MotionEvent) param.args[0];
+            if (mKeySelecting) {
+                View selectedView = mViewNodes.get(mCurrentViewIndex).get();
+                param.setResult(dispatchTouchEvent(selectedView, event));
+            } else if (!TAG_GM_CMP.equals(view.getTag())) {
                 param.setResult(dispatchTouchEvent(view, event));
             }
         }
     }
+
+    private float mDeltaX, mDeltaY;
 
     private boolean dispatchTouchEvent(View v, MotionEvent event) {
         int action = event.getActionMasked();
@@ -88,18 +110,18 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             //防止列表控件拦截事件传递
             ViewParent parent = v.getParent();
             if (parent != null) parent.requestDisallowInterceptTouchEvent(true);
-            mX = event.getX();
-            mY = event.getY();
+            Rect rect = ViewHelper.getLocationInWindow(v);
+            mDeltaX = event.getRawX() - rect.left;
+            mDeltaY = event.getRawY() - rect.top;
             mPendingCheckForLongPress = new CheckForLongPress(v);
             mHandler.postDelayed(mPendingCheckForLongPress, ViewConfiguration.getLongPressTimeout());
+            Logger.d(TAG, "post long press runnong");
         } else if (action == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
             float y = event.getY();
             if (mLongClick) {
-                mMaskView.updateOverlayBounds((int) (event.getRawX() - this.mX), (int) (event.getRawY() - this.mY), v.getWidth(), v.getHeight());
+                mMaskView.updateOverlayBounds((int) (event.getRawX() - this.mDeltaX), (int) (event.getRawY() - this.mDeltaY), v.getWidth(), v.getHeight());
                 mMaskView.setMarked(mCancelView.getRealBounds().intersect(mMaskView.getRealBounds()));
-            } else if (x < 0 || x > v.getWidth() || y < 0 || y > v.getHeight()) {
-                mHandler.removeCallbacks(mPendingCheckForLongPress);
             }
         } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
             ViewParent parent = v.getParent();
@@ -112,6 +134,35 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             mHasBlockEvent = false;
             mMultiPointLock = false;
             mDragging = false;
+        }
+        return true;
+    }
+
+    private boolean dispatchKeyEvent(final Activity activity, KeyEvent keyEvent) {
+        Logger.d(TAG, keyEvent.toString());
+        int action = keyEvent.getAction();
+        int keyCode = keyEvent.getKeyCode();
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (!mKeySelecting && action == KeyEvent.ACTION_DOWN && keyEvent.getRepeatCount() == 0) {
+                //build view tree
+                ViewGroup decorView = (ViewGroup) activity.getWindow().getDecorView();
+                List<WeakReference<View>> viewNodes = ViewHelper.buildViewNodes(decorView);
+                mViewNodes.clear();
+                mViewNodes.addAll(viewNodes);
+                mCurrentViewIndex = 0;
+                mMaskView = MaskView.makeMaskView(activity);
+                mMaskView.setMaskOverlay(OVERLAY_COLOR);
+                View view = mViewNodes.get(mCurrentViewIndex).get();
+                mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(view));
+                mMaskView.attachToContainer(decorView);
+                mKeySelecting = true;
+            } else if (action == KeyEvent.ACTION_DOWN) {
+                mCurrentViewIndex = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                        ? Math.max(--mCurrentViewIndex, 0) : Math.min(++mCurrentViewIndex, mViewNodes.size() - 1);
+                View view = mViewNodes.get(mCurrentViewIndex).get();
+                mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(view));
+            }
+            Logger.d(TAG, "node size=" + mViewNodes.size() + " index=" + mCurrentViewIndex + " key selecting=" + mKeySelecting);
         }
         return true;
     }
@@ -133,11 +184,17 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
             mCancelView = new CancelView(activity);
             mCancelView.attachToContainer(container);
 
-            mMaskView = MaskView.makeMaskView(activity);
-            mMaskView.setMaskOverlay(v);
-            mMaskView.setMarkColor(MARK_COLOR);
-            mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(v));
-            mMaskView.attachToContainer(container);
+            if (mKeySelecting && mMaskView != null) {
+                mMaskView.setMaskOverlay(v);
+                mMaskView.setMarkColor(MARK_COLOR);
+                mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(v));
+            } else {
+                mMaskView = MaskView.makeMaskView(activity);
+                mMaskView.setMaskOverlay(v);
+                mMaskView.setMarkColor(MARK_COLOR);
+                mMaskView.updateOverlayBounds(ViewHelper.getLocationInWindow(v));
+                mMaskView.attachToContainer(container);
+            }
 
             mSnapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(v));
             mViewRule = ViewHelper.makeRule(v);
@@ -168,6 +225,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                 mMaskView = null;
                 mCancelView = null;
                 mViewRule = null;
+                mKeySelecting = false;
             }
         } else {
             ViewGroup container = (ViewGroup) activity.getWindow().getDecorView();
@@ -194,6 +252,7 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
                         mMaskView = null;
                         mCancelView = null;
                         mViewRule = null;
+                        mKeySelecting = false;
                     }
                 }
             });
@@ -201,6 +260,13 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         }
     }
 
+    @Override
+    public void onPropertyChange(Boolean enable) {
+        mIsInEditMode = enable;
+        if (!enable) {
+            mKeySelecting = false;
+        }
+    }
 
     private class CheckForLongPress implements Runnable {
 
@@ -213,7 +279,9 @@ public final class DispatchTouchEventHook extends XC_MethodHook {
         @Override
         public void run() {
             View view = viewRef.get();
+            Logger.d(TAG, "view =" + view);
             if (view != null) {
+                Logger.d(TAG, "perform attach mirror view");
                 performAttachMirrorView(view);
                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
                 mLongClick = true;

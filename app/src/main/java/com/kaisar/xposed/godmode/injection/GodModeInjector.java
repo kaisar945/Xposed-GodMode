@@ -20,9 +20,8 @@ import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
 import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
-import com.kaisar.xposed.godmode.injection.hook.DispatchKeyEventHook;
-import com.kaisar.xposed.godmode.injection.hook.DispatchTouchEventHook;
 import com.kaisar.xposed.godmode.injection.hook.DisplayPropertiesHook;
+import com.kaisar.xposed.godmode.injection.hook.EventHandlerHook;
 import com.kaisar.xposed.godmode.injection.hook.SystemPropertiesHook;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.injection.util.PackageManagerUtils;
@@ -189,13 +188,12 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
         XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
 
+        EventHandlerHook eventHandlerHook = new EventHandlerHook();
+        switchProp.addOnPropertyChangeListener(eventHandlerHook);
         //Volume key select
-        DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
-        XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, dispatchKeyEventHook);
-        GodModeInjector.switchProp.addOnPropertyChangeListener(dispatchKeyEventHook);
-
+        XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, eventHandlerHook);
         //Drag view support
-        XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, new DispatchTouchEventHook());
+        XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, eventHandlerHook);
     }
 
 }
