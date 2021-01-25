@@ -1,6 +1,6 @@
 package com.kaisar.xposed.godmode.fragment;
 
-import android.app.Activity;
+import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -19,10 +19,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.loader.content.Loader;
@@ -45,6 +50,7 @@ import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.util.DonateHelper;
+import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xposed.godmode.widget.Snackbar;
@@ -54,7 +60,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
@@ -63,10 +70,10 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
  * Created by jrsen on 17-10-29.
  */
 
-public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
-        SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<HashMap<String, ActRules>> {
+public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements
+        Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private static final int RULE_LOADER_ID = 0x01;
     private static final int IMPORT_LOADER_ID = 0x02;
 
     private static final String SETTING_PREFS = "settings";
@@ -74,101 +81,114 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     public static final String KEY_EDITOR_SWITCH = "editor_switch";
     public static final String KEY_QUICK_SETTING = "quick_setting";
-    public static final String KEY_ADD_QQ_GROUP = "group_qrcode";
+    public static final String KEY_JOIN_GROUP = "join_group";
     public static final String KEY_DONATE = "donate";
     public static final String KEY_APP_RULES = "app_rules";
 
 
-    private static final int REQUEST_PICK_FILE = 1;
     private SwitchPreferenceCompat mEditorSwitchPreference;
     private CheckBoxPreference mQuickSettingPreference;
-    private Preference mJoinQQGroupPreference;
+    private Preference mJoinGroupPreference;
     private Preference mDonatePreference;
+
+    private ActivityResultLauncher<String> mPickFileLauncher;
+    private SharedViewModel mSharedViewModel;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+        PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
+        mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mSharedViewModel.getAppRules().observe(this, new Observer<Map<String, ActRules>>() {
+            @Override
+            public void onChanged(Map<String, ActRules> result) {
+                if (result != null) {
+                    Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
+                    PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
+                    category.removeAll();
+                    PackageManager pm = requireContext().getPackageManager();
+                    for (Map.Entry<String, ActRules> entry : entrySet) {
+                        String packageName = entry.getKey();
+                        Drawable icon;
+                        CharSequence label;
+                        try {
+                            ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
+                            icon = aInfo.loadIcon(pm);
+                            label = aInfo.loadLabel(pm);
+                        } catch (PackageManager.NameNotFoundException ignore) {
+                            icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+                            label = packageName;
+                        }
+                        Preference preference = new Preference(category.getContext());
+                        preference.setIcon(icon);
+                        preference.setTitle(label);
+                        preference.setSummary(packageName);
+                        preference.setKey(packageName);
+                        preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
+                        category.addPreference(preference);
+                    }
+                }
+            }
+        });
+        mSharedViewModel.loadAppRules();
+        mPickFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), new ActivityResultCallback<Uri>() {
+            @Override
+            public void onActivityResult(final Uri result) {
+                LoaderManager.getInstance(GeneralPreferenceFragment.this).initLoader(IMPORT_LOADER_ID, null, new LoaderManager.LoaderCallbacks<Boolean>() {
+                    @NonNull
+                    @Override
+                    public Loader<Boolean> onCreateLoader(int id, @Nullable Bundle args) {
+                        return new ImportTaskLoader(requireContext(), result);
+                    }
+
+                    @Override
+                    public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean ok) {
+                        if (ok) {
+                            mSharedViewModel.loadAppRules();
+                            Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
+                        } else {
+                            Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
+                        }
+
+                        LoaderManager.getInstance(GeneralPreferenceFragment.this).destroyLoader(IMPORT_LOADER_ID);
+                    }
+
+                    @Override
+                    public void onLoaderReset(@NonNull Loader<Boolean> loader) {
+                    }
+                }).forceLoad();
+            }
+        });
+    }
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setHasOptionsMenu(true);
         addPreferencesFromResource(R.xml.pref_general);
         mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(KEY_EDITOR_SWITCH);
         mEditorSwitchPreference.setChecked(GodModeManager.getDefault().isInEditMode());
         mEditorSwitchPreference.setOnPreferenceChangeListener(this);
         mQuickSettingPreference = (CheckBoxPreference) findPreference(KEY_QUICK_SETTING);
         mQuickSettingPreference.setOnPreferenceChangeListener(this);
-        mJoinQQGroupPreference = findPreference(KEY_ADD_QQ_GROUP);
-        mJoinQQGroupPreference.setOnPreferenceClickListener(this);
+        mJoinGroupPreference = findPreference(KEY_JOIN_GROUP);
+        mJoinGroupPreference.setOnPreferenceClickListener(this);
         mDonatePreference = findPreference(KEY_DONATE);
         mDonatePreference.setOnPreferenceClickListener(this);
-        PreferenceManager.getDefaultSharedPreferences(
-                mEditorSwitchPreference.getContext()).registerOnSharedPreferenceChangeListener(this);
 
-        SharedPreferences sp = requireActivity().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences sp = requireContext().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
         int previousVersionCode = sp.getInt(KEY_VERSION_CODE, 0);
         if (previousVersionCode != BuildConfig.VERSION_CODE) {
             showUpdatePolicyDialog();
             sp.edit().putInt(KEY_VERSION_CODE, BuildConfig.VERSION_CODE).apply();
         } else if (!XposedEnvironment.isModuleActive(getContext())) {
-            requestEnableModuleDialog();
+            showEnableModuleDialog();
         }
-        LoaderManager.getInstance(this).initLoader(RULE_LOADER_ID, null, this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
         requireActivity().setTitle(R.string.app_name);
-        Loader<Object> loader = LoaderManager.getInstance(this).getLoader(RULE_LOADER_ID);
-        if (loader != null) {
-            loader.onContentChanged();
-        }
-    }
-
-    @Override
-    public Loader<HashMap<String, ActRules>> onCreateLoader(int id, Bundle args) {
-        return new DataLoader(requireContext());
-    }
-
-    @Override
-    public void onLoadFinished(@NonNull Loader<HashMap<String, ActRules>> loader, HashMap<String, ActRules> rules) {
-        PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
-        category.removeAll();
-        if (rules != null) {
-            PackageManager pm = requireContext().getPackageManager();
-            for (String packageName : rules.keySet()) {
-                Drawable icon;
-                CharSequence label;
-                try {
-                    ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
-                    icon = aInfo.loadIcon(pm);
-                    label = aInfo.loadLabel(pm);
-                } catch (PackageManager.NameNotFoundException ignore) {
-                    icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
-                    label = packageName;
-                }
-                Preference preference = new Preference(category.getContext());
-                preference.setIcon(icon);
-                preference.setTitle(label);
-                preference.setSummary(packageName);
-                preference.setKey(packageName);
-                preference.setOnPreferenceClickListener(this);
-                category.addPreference(preference);
-            }
-        }
-    }
-
-    @Override
-    public void onLoaderReset(@NonNull Loader<HashMap<String, ActRules>> loader) {
-    }
-
-    private static final class DataLoader extends AsyncTaskLoader<HashMap<String, ActRules>> {
-
-        public DataLoader(Context context) {
-            super(context);
-        }
-
-        @Override
-        public HashMap<String, ActRules> loadInBackground() {
-            return (HashMap<String, ActRules>) GodModeManager.getDefault().getAllRules();
-        }
     }
 
     @Override
@@ -176,7 +196,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(
                 mEditorSwitchPreference.getContext()).unregisterOnSharedPreferenceChangeListener(this);
-        LoaderManager.getInstance(this).destroyLoader(0);
     }
 
     @Override
@@ -199,22 +218,23 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     @Override
     public boolean onPreferenceClick(Preference preference) {
-        if (mJoinQQGroupPreference == preference) {
+        if (mJoinGroupPreference == preference) {
             showGroupInfoDialog();
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(getContext());
         } else {
+            mSharedViewModel.selectActRules(preference.getSummary().toString());
             ViewRuleListFragment fragment = new ViewRuleListFragment();
             fragment.setIcon(preference.getIcon());
             fragment.setLabel(preference.getTitle());
             fragment.setPackageName(preference.getSummary());
             SettingsActivity activity = (SettingsActivity) requireActivity();
-            activity.startPreferenceFragment(fragment, true);
+            activity.startPreferenceFragment(fragment);
         }
         return true;
     }
 
-    private void requestEnableModuleDialog() {
+    private void showEnableModuleDialog() {
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.hey_guy)
                 .setMessage(R.string.not_active_module)
@@ -337,7 +357,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.menu_general, menu);
         MenuItem item = menu.findItem(R.id.menu_icon_switch);
         Context context = requireContext();
@@ -349,11 +369,13 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menu_import_view_rule) {
-            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("*/*");
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(intent, REQUEST_PICK_FILE);
+        if (item.getItemId() == R.id.menu_import_rules) {
+            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
+            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                return true;
+            }
+            mPickFileLauncher.launch("*/*");
         } else if (item.getItemId() == R.id.menu_icon_switch) {
             Context context = requireContext();
             PackageManager pm = context.getPackageManager();
@@ -364,36 +386,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             item.setTitle(enable ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
         }
         return true;
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, final Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_PICK_FILE && resultCode == Activity.RESULT_OK) {
-            LoaderManager.getInstance(this).initLoader(IMPORT_LOADER_ID, null, new LoaderManager.LoaderCallbacks<Boolean>() {
-                @NonNull
-                @Override
-                public Loader<Boolean> onCreateLoader(int id, @Nullable Bundle args) {
-                    return new ImportTaskLoader(requireContext(), data.getData());
-                }
-
-                @Override
-                public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean ok) {
-                    if (ok) {
-                        Loader<Object> ruleLoader = LoaderManager.getInstance(GeneralPreferenceFragment.this).getLoader(RULE_LOADER_ID);
-                        if (ruleLoader != null) {
-                            ruleLoader.onContentChanged();
-                        }
-                    }
-                    Snackbar.make(requireActivity(), ok ? R.string.import_success : R.string.import_failed, Snackbar.LENGTH_LONG).show();
-                    LoaderManager.getInstance(GeneralPreferenceFragment.this).destroyLoader(IMPORT_LOADER_ID);
-                }
-
-                @Override
-                public void onLoaderReset(@NonNull Loader<Boolean> loader) {
-                }
-            }).forceLoad();
-        }
     }
 
     private static final class ImportTaskLoader extends AsyncTaskLoader<Boolean> {
@@ -409,7 +401,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
             dialog.setCancelable(false);
             dialog.setCanceledOnTouchOutside(false);
-            dialog.show();
         }
 
         @Override

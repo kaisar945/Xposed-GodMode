@@ -2,6 +2,7 @@ package com.kaisar.xposed.godmode.util;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.Environment;
 
 import com.google.gson.Gson;

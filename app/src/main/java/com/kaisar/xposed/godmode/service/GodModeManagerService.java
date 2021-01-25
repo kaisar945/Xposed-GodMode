@@ -22,6 +22,7 @@ import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.rule.ActRules;
+import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
 
@@ -32,10 +33,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXG;
@@ -65,7 +64,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private static final int UPDATE_RULE = 0x000016;
 
     private final RemoteCallbackList<ObserverProxy> mRemoteCallbackList = new RemoteCallbackList<>();
-    private final HashMap<String, ActRules> mRuleCache = new HashMap<>();
+    private final AppRules mAppRulesCache = new AppRules();
     private final Context mContext;
     private final Handler mHandle;
     private boolean mInEditMode;
@@ -106,7 +105,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
                     e.printStackTrace();
                 }
             }
-            mRuleCache.putAll(appRules);
+            mAppRulesCache.putAll(appRules);
+            Logger.d(TAG, "app rules cache=" + mAppRulesCache.size());
         }
     }
 
@@ -229,10 +229,10 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      * @return packages rules
      */
     @Override
-    public Map<String, ActRules> getAllRules() throws RemoteException {
+    public AppRules getAllRules() throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "get all rules fail permission denied");
-        if (!mStarted) return Collections.emptyMap();
-        return mRuleCache;
+        if (!mStarted) return new AppRules();
+        return mAppRulesCache;
     }
 
     /**
@@ -247,7 +247,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             throw new RemoteException("get rules fail permission denied");
         }
         if (!mStarted) return new ActRules();
-        return mRuleCache.containsKey(packageName) ? mRuleCache.get(packageName) : new ActRules();
+        return mAppRulesCache.containsKey(packageName) ? mAppRulesCache.get(packageName) : new ActRules();
     }
 
     /**
@@ -264,9 +264,9 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         }
         if (!mStarted) return false;
         try {
-            ActRules actRules = mRuleCache.get(packageName);
+            ActRules actRules = mAppRulesCache.get(packageName);
             if (actRules == null) {
-                mRuleCache.put(packageName, actRules = new ActRules());
+                mAppRulesCache.put(packageName, actRules = new ActRules());
             }
             List<ViewRule> viewRules = actRules.get(viewRule.activityClass);
             if (viewRules == null) {
@@ -294,9 +294,9 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         enforcePermission(BuildConfig.APPLICATION_ID, "update rule fail permission denied");
         if (!mStarted) return false;
         try {
-            ActRules actRules = mRuleCache.get(packageName);
+            ActRules actRules = mAppRulesCache.get(packageName);
             if (actRules == null) {
-                mRuleCache.put(packageName, actRules = new ActRules());
+                mAppRulesCache.put(packageName, actRules = new ActRules());
             }
             List<ViewRule> viewRules = actRules.get(viewRule.activityClass);
             if (viewRules == null) {
@@ -329,7 +329,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         enforcePermission(BuildConfig.APPLICATION_ID, "delete rule fail permission denied");
         if (!mStarted) return false;
         try {
-            ActRules actRules = Preconditions.checkNotNull(mRuleCache.get(packageName), "not found this rule can't delete.");
+            ActRules actRules = Preconditions.checkNotNull(mAppRulesCache.get(packageName), "not found this rule can't delete.");
             List<ViewRule> viewRules = Preconditions.checkNotNull(actRules.get(viewRule.activityClass), "not found this rule can't delete.");
             boolean removed = viewRules.remove(viewRule);
             if (removed) {
@@ -354,7 +354,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         enforcePermission(BuildConfig.APPLICATION_ID, "delete rules fail permission denied");
         if (!mStarted) return false;
         try {
-            mRuleCache.remove(packageName);
+            mAppRulesCache.remove(packageName);
             mHandle.obtainMessage(DELETE_RULES, packageName).sendToTarget();
             notifyObserverRuleChanged(packageName, new ActRules());
             return true;

@@ -1,6 +1,7 @@
 package com.kaisar.xposed.godmode;
 
 import com.kaisar.xposed.godmode.IObserver;
+import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import android.graphics.Bitmap;
@@ -14,7 +15,7 @@ interface IGodModeManager {
 
     void addObserver(String packageName, in IObserver observer);
 
-    Map getAllRules();
+    AppRules getAllRules();
 
     ActRules getRules(String packageName);
 

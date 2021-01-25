@@ -11,10 +11,14 @@ import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.text.TextUtils;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
 import androidx.loader.content.Loader;
@@ -24,7 +28,6 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
 import com.kaisar.xposed.godmode.R;
-import com.kaisar.xposed.godmode.adapter.AdapterDataObserver;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.preference.ImageViewPreference;
 import com.kaisar.xposed.godmode.rule.ViewRule;
@@ -36,6 +39,9 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
+
 /**
  * Created by jrsen on 17-10-29.
  */
@@ -45,35 +51,65 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     private static final String KEY_ALIAS = "alias";
     private static final String KEY_VISIBILITY = "visibility";
 
-    private int index;
-    private Drawable icon;
-    private CharSequence label;
-    private CharSequence packageName;
-    private ViewRule viewRule;
-    private AdapterDataObserver<ViewRule> dataObserver;
+    private Drawable mIcon;
+    private CharSequence mLabel;
+    private CharSequence mPackageName;
+    private ViewRule mViewRule;
+    private Bitmap mImageBitmap;
 
-    public void setIndex(int index) {
-        this.index = index;
-    }
+    private SharedViewModel mSharedViewModel;
 
     public void setIcon(Drawable icon) {
-        this.icon = icon;
+        mIcon = icon;
     }
 
     public void setLabel(CharSequence label) {
-        this.label = label;
+        mLabel = label;
     }
 
     public void setPackageName(CharSequence packageName) {
-        this.packageName = packageName;
+        mPackageName = packageName;
     }
 
     public void setViewRule(ViewRule viewRule) {
-        this.viewRule = viewRule;
+        mViewRule = viewRule;
     }
 
-    public void setDataObserver(AdapterDataObserver<ViewRule> dataObserver) {
-        this.dataObserver = dataObserver;
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        Log.d(TAG, "onCreate");
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d(TAG, "onCreateView");
+        return super.onCreateView(inflater, container, savedInstanceState);
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        Log.d(TAG, "onViewCreated");
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        Log.d(TAG, "onStart");
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume");
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause");
     }
 
     @Override
@@ -83,38 +119,38 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         Context context = preferenceScreen.getContext();
         Preference headerPreference = new Preference(context);
         headerPreference.setSelectable(false);
-        headerPreference.setIcon(icon);
-        headerPreference.setTitle(label);
-        headerPreference.setSummary(packageName);
+        headerPreference.setIcon(mIcon);
+        headerPreference.setTitle(mLabel);
+        headerPreference.setSummary(mPackageName);
         preferenceScreen.addPreference(headerPreference);
 
         Preference preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_create_time);
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault());
-        preference.setSummary(dateFormat.format(new Date(viewRule.timestamp)));
+        preference.setSummary(dateFormat.format(new Date(mViewRule.timestamp)));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_generate_version);
-        preference.setSummary(String.format(Locale.getDefault(), "%s %s", label, viewRule.matchVersionName));
+        preference.setSummary(String.format(Locale.getDefault(), "%s %s", mLabel, mViewRule.matchVersionName));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_activity);
-        preference.setSummary(Preconditions.optionDefault(viewRule.activityClass, "None"));
+        preference.setSummary(Preconditions.optionDefault(mViewRule.activityClass, "None"));
         preferenceScreen.addPreference(preference);
 
         EditTextPreference aliasEditTextPreference = new EditTextPreference(context);
         aliasEditTextPreference.setKey(KEY_ALIAS);
         aliasEditTextPreference.setTitle(R.string.rule_details_field_alias);
         aliasEditTextPreference.setDialogTitle(R.string.rule_details_set_alias);
-        aliasEditTextPreference.setSummary(Preconditions.optionDefault(viewRule.alias, getString(R.string.rule_details_set_alias)));
+        aliasEditTextPreference.setSummary(Preconditions.optionDefault(mViewRule.alias, getString(R.string.rule_details_set_alias)));
         aliasEditTextPreference.setPersistent(false);
         aliasEditTextPreference.setOnPreferenceChangeListener(this);
         aliasEditTextPreference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
             @Override
             public boolean onPreferenceClick(Preference preference) {
-                ((EditTextPreference) preference).setText(viewRule.alias);
+                ((EditTextPreference) preference).setText(mViewRule.alias);
                 return false;
             }
         });
@@ -122,36 +158,36 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
-        Rect bounds = new Rect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height);
+        Rect bounds = new Rect(mViewRule.x, mViewRule.y, mViewRule.x + mViewRule.width, mViewRule.y + mViewRule.height);
         preference.setTitle(R.string.rule_details_field_view_bounds);
         preference.setSummary(bounds.toShortString());
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_view_type);
-        preference.setSummary(viewRule.viewClass);
+        preference.setSummary(mViewRule.viewClass);
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_view_depth);
-        preference.setSummary(Arrays.toString(viewRule.depth));
+        preference.setSummary(Arrays.toString(mViewRule.depth));
         preferenceScreen.addPreference(preference);
 
         preference = new Preference(context);
         preference.setTitle(R.string.rule_details_field_res_name);
-        preference.setSummary(viewRule.resourceName);
+        preference.setSummary(mViewRule.resourceName);
         preferenceScreen.addPreference(preference);
 
-        if (!TextUtils.isEmpty(viewRule.text)) {
+        if (!TextUtils.isEmpty(mViewRule.text)) {
             preference = new Preference(context);
             preference.setTitle(R.string.rule_details_field_text);
-            preference.setSummary(viewRule.text);
+            preference.setSummary(mViewRule.text);
             preferenceScreen.addPreference(preference);
         }
-        if (!TextUtils.isEmpty(viewRule.description)) {
+        if (!TextUtils.isEmpty(mViewRule.description)) {
             preference = new Preference(context);
             preference.setTitle(R.string.rule_details_field_description);
-            preference.setSummary(viewRule.description);
+            preference.setSummary(mViewRule.description);
             preferenceScreen.addPreference(preference);
         }
 
@@ -164,42 +200,47 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         dropDownPreference.setSummary("%s");
         dropDownPreference.setEntries(entries);
         dropDownPreference.setEntryValues(new CharSequence[]{String.valueOf(View.INVISIBLE), String.valueOf(View.GONE)});
-        dropDownPreference.setValue(String.valueOf(viewRule.visibility));
+        dropDownPreference.setValue(String.valueOf(mViewRule.visibility));
         preference = dropDownPreference;
         preferenceScreen.addPreference(preference);
 
-        if (!TextUtils.isEmpty(viewRule.imagePath)) {
+        if (!TextUtils.isEmpty(mViewRule.imagePath)) {
             LoaderManager.getInstance(this).initLoader(0, null, this).forceLoad();
         }
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        requireActivity().setTitle(R.string.title_rule_details);
+    public void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop");
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        Log.d(TAG, "onDestroyView");
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        dataObserver = null;
+        mViewRule = null;
+        recycleBitmap(mImageBitmap);
+        Log.d(TAG, "onDestroy");
     }
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         String key = preference.getKey();
-        GodModeManager manager = GodModeManager.getDefault();
         if (KEY_ALIAS.equals(key)) {
-            viewRule.alias = (String) newValue;
-            preference.setSummary(viewRule.alias);
-            manager.updateRule(packageName.toString(), viewRule);
-            dataObserver.onItemChanged(index);
+            mViewRule.alias = (String) newValue;
+            preference.setSummary(mViewRule.alias);
+            mSharedViewModel.updateRule(mViewRule);
         } else if (KEY_VISIBILITY.equals(key)) {
             int newVisibility = Integer.parseInt((String) newValue);
-            if (newVisibility != viewRule.visibility) {
-                viewRule.visibility = newVisibility;
-                manager.updateRule(packageName.toString(), viewRule);
-                dataObserver.onItemChanged(index);
+            if (newVisibility != mViewRule.visibility) {
+                mViewRule.visibility = newVisibility;
+                mSharedViewModel.updateRule(mViewRule);
             }
         }
         return true;
@@ -208,15 +249,16 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @NonNull
     @Override
     public Loader<Bitmap> onCreateLoader(int id, @Nullable Bundle args) {
-        return new ImageLoader(requireContext(), viewRule);
+        return new ImageLoader(requireContext(), mViewRule);
     }
 
     @Override
     public void onLoadFinished(@NonNull Loader<Bitmap> loader, Bitmap data) {
         if (data != null) {
-            ImageViewPreference preference = new ImageViewPreference(getContext());
-            preference.setDefaultValue(data);
-            getPreferenceScreen().addPreference(preference);
+            mImageBitmap = data;
+            ImageViewPreference imageViewPreference = new ImageViewPreference(getContext());
+            imageViewPreference.setImageBitmap(data);
+            getPreferenceScreen().addPreference(imageViewPreference);
         }
         LoaderManager.getInstance(this).destroyLoader(0);
     }

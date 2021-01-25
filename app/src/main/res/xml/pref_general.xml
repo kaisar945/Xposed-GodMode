@@ -19,7 +19,7 @@
 
         <Preference
                 android:icon="@drawable/ic_people"
-                android:key="group_qrcode"
+                android:key="join_group"
                 android:summary="@string/pref_description_add_group"
                 android:title="@string/pref_title_add_group" />
 

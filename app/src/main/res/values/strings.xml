@@ -83,5 +83,6 @@
     <string name="top_revert_tip">噢 上帝，原谅这只愚蠢的土拨鼠吧！</string>
 
     <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
+    <string name="unknown_activity">未知界面</string>
 
 </resources>

@@ -68,4 +68,5 @@
     <string name="crash_tip">Crash detected\n</string>
     <string name="top_revert_tip">Move here to cancel</string>
     <string name="dialog_message_query_community">Loading community info...</string>
+    <string name="unknown_activity">Unknown</string>
 </resources>

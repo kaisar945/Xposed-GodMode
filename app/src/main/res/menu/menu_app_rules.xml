@@ -2,11 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/menu_purge_all_rules"
+        android:id="@+id/menu_revoke_rules"
         android:title="@string/menu_title_purge_all_rules" />
 
     <item
-        android:id="@+id/menu_export_all_rules"
+        android:id="@+id/menu_export_rules"
         android:title="@string/menu_export_all_rules" />
 
 </menu>

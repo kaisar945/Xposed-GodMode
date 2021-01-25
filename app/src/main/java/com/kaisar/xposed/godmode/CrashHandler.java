@@ -13,13 +13,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Properties;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+
 /**
  * Created by jrsen on 17-10-21.
  */
 
 final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
-    private static final String TAG = "CrashHandler";
     private static final String BUG_REPORT_FILE = "crash_log.txt";
     private static File logFile;
 
@@ -52,14 +53,16 @@ final class CrashHandler implements Thread.UncaughtExceptionHandler {
     }
 
     public static String loadCrashLog() {
-        try (FileReader fr = new FileReader(logFile)) {
-            Properties properties = new Properties();
-            properties.load(fr);
-            return properties.getProperty("stack_trace");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
+        if (logFile.exists()) {
+            try (FileReader fr = new FileReader(logFile)) {
+                Properties properties = new Properties();
+                properties.load(fr);
+                return properties.getProperty("stack_trace");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+        return "";
     }
 
     public static void clearCrashLog() {

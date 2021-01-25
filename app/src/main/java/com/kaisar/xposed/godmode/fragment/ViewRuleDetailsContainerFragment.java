@@ -1,5 +1,6 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import android.Manifest;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -12,61 +13,75 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentStatePagerAdapter;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.viewpager.widget.ViewPager;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
+import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback;
 
 import com.kaisar.xposed.godmode.R;
-import com.kaisar.xposed.godmode.adapter.AdapterDataObserver;
-import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.rule.ViewRule;
+import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.util.List;
+
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
-public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCompat implements ViewPager.OnPageChangeListener {
+public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCompat {
 
-    private int curIndex;
-    private Drawable icon;
-    private CharSequence label;
-    private CharSequence packageName;
-    private AdapterDataObserver<ViewRule> adapterDataObserver;
+    private int mCurIndex;
+    private Drawable mIcon;
+    private CharSequence mLabel;
+    private CharSequence mPackageName;
+
+    private SharedViewModel mSharedViewModel;
 
     public void setCurIndex(int curIndex) {
-        this.curIndex = curIndex;
+        mCurIndex = curIndex;
     }
 
     public void setIcon(Drawable icon) {
-        this.icon = icon;
+        mIcon = icon;
     }
 
     public void setLabel(CharSequence label) {
-        this.label = label;
+        mLabel = label;
     }
 
     public void setPackageName(CharSequence packageName) {
-        this.packageName = packageName;
+        mPackageName = packageName;
     }
 
-    public void setAdapterDataObserver(AdapterDataObserver<ViewRule> adapterDataObserver) {
-        this.adapterDataObserver = adapterDataObserver;
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+        mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
     }
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        setHasOptionsMenu(true);
+        requireActivity().setTitle(R.string.title_rule_details);
     }
+
+    private final OnPageChangeCallback mCallback = new OnPageChangeCallback() {
+        @Override
+        public void onPageSelected(int position) {
+            Logger.d(TAG, "new position" + position);
+            mCurIndex = position;
+        }
+    };
 
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        ViewPager viewPager = (ViewPager) inflater.inflate(R.layout.preference_view_pager, container, false);
-        viewPager.addOnPageChangeListener(this);
-        viewPager.setAdapter(new PanelFragmentPagerAdapter(requireActivity().getSupportFragmentManager()));
-        viewPager.setCurrentItem(curIndex);
-        return viewPager;
+        ViewPager2 viewPager2 = (ViewPager2) inflater.inflate(R.layout.preference_view_pager, container, false);
+        viewPager2.setAdapter(new DetailFragmentStateAdapter(this));
+        viewPager2.registerOnPageChangeCallback(mCallback);
+        viewPager2.setCurrentItem(mCurIndex);
+        return viewPager2;
     }
 
     @Override
@@ -77,12 +92,17 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        ViewRule viewRule = adapterDataObserver.getItem(curIndex);
+        List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+        ViewRule viewRule = viewRules.get(mCurIndex);
         if (item.getItemId() == R.id.menu_revert) {
-            GodModeManager.getDefault().deleteRule(packageName.toString(), viewRule);
-            adapterDataObserver.onItemRemoved(curIndex);
+            mSharedViewModel.deleteRule(viewRule);
             requireActivity().onBackPressed();
         } else if (item.getItemId() == R.id.menu_export) {
+            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
+            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                return true;
+            }
             try {
                 String filepath = RuleHelper.exportRules(viewRule);
                 Snackbar.make(requireActivity(), getString(R.string.export_successful, filepath), Snackbar.LENGTH_LONG).show();
@@ -94,41 +114,29 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         return true;
     }
 
-    @Override
-    public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
-    }
+    final class DetailFragmentStateAdapter extends FragmentStateAdapter {
 
-    @Override
-    public void onPageSelected(int position) {
-        curIndex = position;
-    }
-
-    @Override
-    public void onPageScrollStateChanged(int state) {
-
-    }
-
-    final class PanelFragmentPagerAdapter extends FragmentStatePagerAdapter {
-
-        PanelFragmentPagerAdapter(FragmentManager fm) {
-            super(fm);
+        public DetailFragmentStateAdapter(@NonNull Fragment fragment) {
+            super(fragment);
         }
 
+        @NonNull
         @Override
-        public Fragment getItem(int position) {
+        public Fragment createFragment(int position) {
+            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            ViewRule viewRule = viewRules.get(position);
             ViewRuleDetailsFragment fragment = new ViewRuleDetailsFragment();
-            fragment.setIndex(position);
-            fragment.setIcon(icon);
-            fragment.setLabel(label);
-            fragment.setPackageName(packageName);
-            fragment.setViewRule(adapterDataObserver.getItem(position));
-            fragment.setDataObserver(adapterDataObserver);
+            fragment.setIcon(mIcon);
+            fragment.setLabel(mLabel);
+            fragment.setPackageName(mPackageName);
+            fragment.setViewRule(viewRule);
             return fragment;
         }
 
         @Override
-        public int getCount() {
-            return adapterDataObserver.getSize();
+        public int getItemCount() {
+            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            return viewRules.size();
         }
     }
 

@@ -17,9 +17,12 @@ public final class ActRules extends HashMap<String, List<ViewRule>> implements P
     public ActRules() {
     }
 
-    @SuppressWarnings("unchecked")
+    public ActRules(int initialCapacity) {
+        super(initialCapacity);
+    }
+
     protected ActRules(Parcel in) {
-        putAll(in.readHashMap(ViewRule.class.getClassLoader()));
+        in.readMap(this, getClass().getClassLoader());
     }
 
     @Override

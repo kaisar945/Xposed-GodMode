@@ -14,48 +14,34 @@ import com.kaisar.xposed.godmode.R;
 
 public final class ImageViewPreference extends androidx.preference.Preference {
 
-    private Bitmap bitmap;
+    private ImageView mImageView;
+    private Bitmap mBitmap;
 
     public ImageViewPreference(Context context) {
         super(context);
-        init();
-    }
-
-    private void init() {
         setLayoutResource(R.layout.preference_image_preview);
     }
 
     @Override
     public void onBindViewHolder(PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
-        ImageView imageView = (ImageView) holder.findViewById(R.id.image);
-        imageView.setImageBitmap(bitmap);
+        mImageView = (ImageView) holder.findViewById(R.id.image);
+        if (mBitmap != null) {
+            mImageView.setImageBitmap(mBitmap);
+        }
     }
 
-    //    @Override
-//    protected View onCreateView(ViewGroup parent) {
-//        View view = super.onCreateView(parent);
-//        if (bitmap != null && !bitmap.isRecycled()) {
-//            ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
-//            layoutParams.height = bitmap.getHeight();
-//        }
-//        return view;
-//    }
-
-//    @Override
-//    protected void onBindView(View view) {
-//        super.onBindView(view);
-//        if (bitmap != null && !bitmap.isRecycled()) {
-//            ImageView imageView = (ImageView) view.findViewById(R.id.image);
-//            imageView.setImageBitmap(bitmap);
-//        }
-//    }
-
-    @Override
-    protected void onSetInitialValue(boolean restorePersistedValue, Object defaultValue) {
-        super.onSetInitialValue(restorePersistedValue, defaultValue);
-        bitmap = (Bitmap) defaultValue;
+    public void setImageBitmap(Bitmap bm) {
+        mBitmap = bm;
+        if (mImageView != null) {
+            mImageView.setImageBitmap(bm);
+        }
     }
 
+    public void setImageResource(int resId) {
+        if (mImageView != null) {
+            mImageView.setImageResource(resId);
+        }
+    }
 
 }

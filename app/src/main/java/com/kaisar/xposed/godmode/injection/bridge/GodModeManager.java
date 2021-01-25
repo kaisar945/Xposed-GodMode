@@ -5,14 +5,12 @@ import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import android.os.RemoteException;
 
-import com.kaisar.xservicemanager.XServiceManager;
 import com.kaisar.xposed.godmode.IGodModeManager;
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.rule.ActRules;
+import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
-
-import java.util.Collections;
-import java.util.Map;
+import com.kaisar.xservicemanager.XServiceManager;
 
 public final class GodModeManager {
 
@@ -62,13 +60,12 @@ public final class GodModeManager {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    public Map<String, ActRules> getAllRules() {
+    public AppRules getAllRules() {
         try {
             return mGMM.getAllRules();
         } catch (RemoteException e) {
             e.printStackTrace();
-            return Collections.emptyMap();
+            return new AppRules();
         }
     }
 
@@ -117,7 +114,7 @@ public final class GodModeManager {
         }
     }
 
-    public ParcelFileDescriptor openFile(String filePath , int mode) {
+    public ParcelFileDescriptor openFile(String filePath, int mode) {
         try {
             return mGMM.openFile(filePath, mode);
         } catch (RemoteException e) {
