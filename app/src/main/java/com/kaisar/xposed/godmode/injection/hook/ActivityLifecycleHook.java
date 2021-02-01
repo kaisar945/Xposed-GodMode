@@ -99,7 +99,6 @@ public final class ActivityLifecycleHook extends XC_MethodHook implements Proper
 
         @Override
         public void onGlobalLayout() {
-            Logger.d(TAG, "onGlobalLayout");
             applyRuleIfMatchCondition();
         }
 

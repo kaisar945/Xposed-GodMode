@@ -4,5 +4,5 @@ import com.kaisar.xposed.godmode.rule.ActRules;
 
 interface IObserver {
     void onEditModeChanged(boolean enable);
-    void onViewRuleChanged(in ActRules actRules);
+    void onViewRuleChanged(String packageName, in ActRules actRules);
 }

@@ -42,6 +42,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.kaisar.xposed.godmode.BuildConfig;
+import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
@@ -72,8 +73,9 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
 public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements
         Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
-        SharedPreferences.OnSharedPreferenceChangeListener {
+        SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<Void> {
 
+    private static final int LIST_LOADER_ID = 0x01;
     private static final int IMPORT_LOADER_ID = 0x02;
 
     private static final String SETTING_PREFS = "settings";
@@ -94,15 +96,36 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     private ActivityResultLauncher<String> mPickFileLauncher;
     private SharedViewModel mSharedViewModel;
 
+    private Logger mLogger;
+
+    private final IObserver mRuleObserver = new IObserver.Stub() {
+        @Override
+        public void onEditModeChanged(boolean enable) {
+            // Don't care
+        }
+
+        @Override
+        public void onViewRuleChanged(String packageName, ActRules actRules) {
+            mLogger.d("远端规则变化");
+            mSharedViewModel.reloadAppRules();
+            if (TextUtils.equals(packageName, mSharedViewModel.getSelectedPackage().getValue())) {
+                mLogger.d("更新选中列表");
+                mSharedViewModel.updateSelectedPackage(packageName);
+            }
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
         mSharedViewModel.getAppRules().observe(this, new Observer<Map<String, ActRules>>() {
             @Override
             public void onChanged(Map<String, ActRules> result) {
+//                mLogger.d("更新主页面列表:" + (result != null ? result.size() : result));
                 if (result != null) {
                     Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
                     PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
@@ -131,7 +154,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 }
             }
         });
-        mSharedViewModel.loadAppRules();
         mPickFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), new ActivityResultCallback<Uri>() {
             @Override
             public void onActivityResult(final Uri result) {
@@ -145,12 +167,11 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                     @Override
                     public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean ok) {
                         if (ok) {
-                            mSharedViewModel.loadAppRules();
+                            mSharedViewModel.reloadAppRules();
                             Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
                         } else {
                             Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
                         }
-
                         LoaderManager.getInstance(GeneralPreferenceFragment.this).destroyLoader(IMPORT_LOADER_ID);
                     }
 
@@ -160,6 +181,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 }).forceLoad();
             }
         });
+        GodModeManager.getDefault().addObserver("*", mRuleObserver);
+        LoaderManager.getInstance(this).initLoader(LIST_LOADER_ID, null, this).onContentChanged();
     }
 
     @Override
@@ -196,6 +219,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(
                 mEditorSwitchPreference.getContext()).unregisterOnSharedPreferenceChangeListener(this);
+        GodModeManager.getDefault().removeObserver("*", mRuleObserver);
     }
 
     @Override
@@ -223,7 +247,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(getContext());
         } else {
-            mSharedViewModel.selectActRules(preference.getSummary().toString());
+            String packageName = preference.getSummary().toString();
+            mSharedViewModel.updateSelectedPackage(packageName);
             ViewRuleListFragment fragment = new ViewRuleListFragment();
             fragment.setIcon(preference.getIcon());
             fragment.setLabel(preference.getTitle());
@@ -386,6 +411,67 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             item.setTitle(enable ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
         }
         return true;
+    }
+
+    @NonNull
+    @Override
+    public Loader<Void> onCreateLoader(int id, @Nullable Bundle args) {
+        return new ListLoader(requireContext(), mSharedViewModel);
+    }
+
+    @Override
+    public void onLoadFinished(@NonNull Loader<Void> loader, Void data) {
+    }
+
+    @Override
+    public void onLoaderReset(@NonNull Loader<Void> loader) {
+    }
+
+    private static final class ListLoader extends AsyncTaskLoader<Void> {
+
+        private final ProgressDialog dialog;
+        private final SharedViewModel sharedViewModel;
+
+        public ListLoader(@NonNull Context context, SharedViewModel sharedViewModel) {
+            super(context);
+            this.sharedViewModel = sharedViewModel;
+            dialog = new ProgressDialog(context);
+            dialog.setMessage(context.getText(R.string.dialog_loading));
+            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+            dialog.setCancelable(false);
+            dialog.setCanceledOnTouchOutside(false);
+        }
+
+        @Override
+        protected void onStartLoading() {
+            Logger.d(TAG, "onStartLoading");
+            super.onStartLoading();
+            if (takeContentChanged()) {
+                forceLoad();
+                if (dialog.isShowing()) {
+                    dialog.dismiss();
+                }
+                dialog.show();
+            }
+        }
+
+        @Nullable
+        @Override
+        public Void loadInBackground() {
+            Logger.d(TAG, "loadInBackground");
+            sharedViewModel.reloadAppRules();
+            return null;
+        }
+
+        @Override
+        public void deliverResult(@Nullable Void data) {
+            Logger.d(TAG, "deliverResult");
+            super.deliverResult(data);
+
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
+        }
     }
 
     private static final class ImportTaskLoader extends AsyncTaskLoader<Boolean> {

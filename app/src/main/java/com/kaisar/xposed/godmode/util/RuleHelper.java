@@ -2,7 +2,6 @@ package com.kaisar.xposed.godmode.util;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Build;
 import android.os.Environment;
 
 import com.google.gson.Gson;
@@ -25,7 +24,7 @@ import java.util.Iterator;
 import java.util.Locale;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 public final class RuleHelper {
 
@@ -94,7 +93,7 @@ public final class RuleHelper {
                         ViewRule viewRule = gson.fromJson(jsonObject.toString(), ViewRule.class);
                         Bitmap bitmap = BitmapFactory.decodeFile(new File(TEMP_DIR, viewRule.imagePath).getPath());
                         GodModeManager.getDefault().writeRule(viewRule.packageName, viewRule, bitmap);
-                        recycleBitmap(bitmap);
+                        recycleNullableBitmap(bitmap);
                     }
                     return true;
                 }

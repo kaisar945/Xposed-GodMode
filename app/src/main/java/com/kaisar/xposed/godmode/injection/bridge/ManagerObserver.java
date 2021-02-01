@@ -25,7 +25,7 @@ public final class ManagerObserver extends IObserver.Stub implements Handler.Cal
     }
 
     @Override
-    public void onViewRuleChanged(ActRules actRules) {
+    public void onViewRuleChanged(String packageName, ActRules actRules) {
         mHandler.obtainMessage(ACTION_VIEW_RULES_CHANGED, actRules).sendToTarget();
     }
 

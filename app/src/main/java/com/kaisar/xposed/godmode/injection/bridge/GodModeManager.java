@@ -60,6 +60,14 @@ public final class GodModeManager {
         }
     }
 
+    public void removeObserver(String packageName, IObserver observer) {
+        try {
+            mGMM.removeObserver(packageName, observer);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+
     public AppRules getAllRules() {
         try {
             return mGMM.getAllRules();
@@ -114,9 +122,9 @@ public final class GodModeManager {
         }
     }
 
-    public ParcelFileDescriptor openFile(String filePath, int mode) {
+    public ParcelFileDescriptor openImageFileDescriptor(String filePath) {
         try {
-            return mGMM.openFile(filePath, mode);
+            return mGMM.openImageFileDescriptor(filePath);
         } catch (RemoteException e) {
             e.printStackTrace();
             return null;

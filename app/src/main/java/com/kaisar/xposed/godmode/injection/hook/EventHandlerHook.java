@@ -38,7 +38,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 import static com.kaisar.xposed.godmode.injection.ViewHelper.TAG_GM_CMP;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 /**
  * Created by jrsen on 17-12-6.
@@ -115,7 +115,6 @@ public final class EventHandlerHook extends XC_MethodHook implements Property.On
             mDeltaY = event.getRawY() - rect.top;
             mPendingCheckForLongPress = new CheckForLongPress(v);
             mHandler.postDelayed(mPendingCheckForLongPress, ViewConfiguration.getLongPressTimeout());
-            Logger.d(TAG, "post long press runnong");
         } else if (action == MotionEvent.ACTION_MOVE) {
             float x = event.getX();
             float y = event.getY();
@@ -219,7 +218,7 @@ public final class EventHandlerHook extends XC_MethodHook implements Property.On
                 mMaskView.detachFromContainer();
                 mViewRule.visibility = View.VISIBLE;
                 ViewController.revokeRule(v, mViewRule);
-                recycleBitmap(mSnapshot);
+                recycleNullableBitmap(mSnapshot);
             } finally {
                 mSnapshot = null;
                 mMaskView = null;
@@ -239,7 +238,7 @@ public final class EventHandlerHook extends XC_MethodHook implements Property.On
                     mViewRule.visibility = View.GONE;
                     ViewController.applyRule(v, mViewRule);
                     GodModeManager.getDefault().writeRule(v.getContext().getPackageName(), mViewRule, mSnapshot);
-                    recycleBitmap(mSnapshot);
+                    recycleNullableBitmap(mSnapshot);
                     mMaskView.detachFromContainer();
                 }
 

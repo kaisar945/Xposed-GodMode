@@ -40,7 +40,7 @@ import java.util.Date;
 import java.util.Locale;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -225,7 +225,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     public void onDestroy() {
         super.onDestroy();
         mViewRule = null;
-        recycleBitmap(mImageBitmap);
+        recycleNullableBitmap(mImageBitmap);
         Log.d(TAG, "onDestroy");
     }
 
@@ -281,7 +281,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         public Bitmap loadInBackground() {
             Bitmap snapshot = viewRule.snapshot;
             if (snapshot == null && !TextUtils.isEmpty(viewRule.imagePath)) {
-                ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
+                ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openImageFileDescriptor(viewRule.imagePath);
                 if (parcelFileDescriptor != null) {
                     try {
                         try {

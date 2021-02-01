@@ -15,6 +15,8 @@ interface IGodModeManager {
 
     void addObserver(String packageName, in IObserver observer);
 
+    void removeObserver(String packageName, in IObserver observer);
+
     AppRules getAllRules();
 
     ActRules getRules(String packageName);
@@ -27,6 +29,6 @@ interface IGodModeManager {
 
     boolean deleteRules(String packageName);
 
-    ParcelFileDescriptor openFile(String filePath, int mode);
+    ParcelFileDescriptor openImageFileDescriptor(String filePath);
 
 }

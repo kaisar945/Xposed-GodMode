@@ -1,7 +1,8 @@
 package com.kaisar.xposed.godmode.injection.util;
 
-import androidx.annotation.Keep;
 import android.util.Log;
+
+import androidx.annotation.Keep;
 
 /**
  * Created by jrsen on 17-10-21.
@@ -58,6 +59,40 @@ public final class Logger {
 
     public static boolean isLoggable(String tag, int level) {
         return Log.isLoggable(TAG, level) || Log.isLoggable(tag, level);
+    }
+
+    private final String mName;
+
+    private Logger(String tag) {
+        this.mName = tag;
+    }
+
+    public void d(String message) {
+        if (isLoggable(TAG, Log.DEBUG)) d(TAG, String.format("[%s] %s", mName, message));
+    }
+
+    public void i(String message) {
+        if (isLoggable(TAG, Log.INFO)) i(TAG, String.format("[%s] %s", mName, message));
+    }
+
+    public void w(String message) {
+        if (isLoggable(TAG, Log.WARN)) w(TAG, String.format("[%s] %s", mName, message));
+    }
+
+    public void w(String message, Throwable tr) {
+        if (isLoggable(TAG, Log.WARN)) w(TAG, String.format("[%s] %s", mName, message), tr);
+    }
+
+    public void e(String message) {
+        if (isLoggable(TAG, Log.ERROR)) e(mName, String.format("[%s] %s", mName, message));
+    }
+
+    public void e(String message, Throwable tr) {
+        if (isLoggable(TAG, Log.ERROR)) e(mName, String.format("[%s] %s", mName, message), tr);
+    }
+
+    public static Logger getLogger(String name) {
+        return new Logger(name);
     }
 
 }

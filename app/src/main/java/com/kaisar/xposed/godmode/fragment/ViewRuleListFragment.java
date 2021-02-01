@@ -50,17 +50,18 @@ import com.kaisar.xposed.godmode.widget.Snackbar;
 import java.util.List;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleBitmap;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 /**
  * Created by jrsen on 17-10-29.
  */
 
-public final class ViewRuleListFragment extends Fragment implements LoaderManager.LoaderCallbacks<Void> {
+public final class ViewRuleListFragment extends Fragment implements LoaderManager.LoaderCallbacks<Boolean> {
 
     private static final int THUMBNAIL_LOADER_ID = 0x01;
     private static final int EXPORT_TASK_LOADER_ID = 0x02;
 
+    private Logger mLogger;
     private Drawable mIcon;
     private CharSequence mLabel;
     private CharSequence mPackageName;
@@ -88,20 +89,27 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+//        mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mSharedViewModel.getSelectedPackage().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String packageName) {
+                mSharedViewModel.updateViewRuleList(packageName);
+            }
+        });
         mSharedViewModel.getActRules().observe(this, new Observer<List<ViewRule>>() {
             @Override
             public void onChanged(List<ViewRule> viewRules) {
                 if (viewRules.isEmpty()) {
-                    mSharedViewModel.deleteAppRules(mPackageName.toString());
+//                    mLogger.d("規則列表頁爲空返回上一個頁面");
                     requireActivity().onBackPressed();
                 } else {
-                    mRecyclerView.getAdapter().notifyDataSetChanged();
+//                    mLogger.d("重新加載規則列表");
+                    LoaderManager.getInstance(ViewRuleListFragment.this).restartLoader(THUMBNAIL_LOADER_ID, null, ViewRuleListFragment.this).onContentChanged();
                 }
             }
         });
-        LoaderManager.getInstance(this).initLoader(THUMBNAIL_LOADER_ID, null, this);
     }
 
     @Nullable
@@ -150,8 +158,6 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
 
             if (Preconditions.checkBitmap(viewRule.thumbnail)) {
                 holder.mImageView.setImageBitmap(viewRule.thumbnail);
-            } else {
-                holder.mImageView.setImageDrawable(mIcon);
             }
             if (viewRule.activityClass != null) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
@@ -224,8 +230,10 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         super.onDestroy();
         List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
         for (ViewRule viewRule : viewRules) {
-            recycleBitmap(viewRule.thumbnail);
-            recycleBitmap(viewRule.snapshot);
+            recycleNullableBitmap(viewRule.snapshot);
+            viewRule.snapshot = null;
+            recycleNullableBitmap(viewRule.thumbnail);
+            viewRule.thumbnail = null;
         }
     }
 
@@ -272,20 +280,23 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
     }
 
     @Override
-    public Loader<Void> onCreateLoader(int id, Bundle args) {
+    public Loader<Boolean> onCreateLoader(int id, Bundle args) {
         return new ThumbnailLoader(requireContext(), mSharedViewModel);
     }
 
     @Override
-    public void onLoadFinished(@NonNull Loader<Void> loader, Void data) {
-        LoaderManager.getInstance(this).destroyLoader(THUMBNAIL_LOADER_ID);
+    public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean data) {
+        if (data) {
+            @SuppressWarnings("rawtypes") RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
+            if (adapter != null) adapter.notifyDataSetChanged();
+        }
     }
 
     @Override
-    public void onLoaderReset(@NonNull Loader<Void> loader) {
+    public void onLoaderReset(@NonNull Loader<Boolean> loader) {
     }
 
-    private static final class ThumbnailLoader extends AsyncTaskLoader<Void> {
+    private static final class ThumbnailLoader extends AsyncTaskLoader<Boolean> {
 
         private final ProgressDialog mDialog;
         private final SharedViewModel mSharedViewModel;
@@ -302,21 +313,23 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         @Override
         protected void onStartLoading() {
             super.onStartLoading();
-            forceLoad();
-            if (mDialog.isShowing()) {
-                mDialog.dismiss();
+            if (takeContentChanged()) {
+                forceLoad();
+                if (mDialog.isShowing()) {
+                    mDialog.dismiss();
+                }
+                mDialog.show();
             }
-            mDialog.show();
         }
 
         @Override
-        public Void loadInBackground() {
+        public Boolean loadInBackground() {
+            GodModeManager gmm = GodModeManager.getDefault();
             List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
-            GodModeManager manager = GodModeManager.getDefault();
             for (ViewRule viewRule : viewRules) {
-                if (viewRule.imagePath != null) {
+                if (viewRule.thumbnail == null && !TextUtils.isEmpty(viewRule.imagePath)) {
                     try {
-                        ParcelFileDescriptor parcelFileDescriptor = manager.openFile(viewRule.imagePath, ParcelFileDescriptor.MODE_READ_ONLY);
+                        ParcelFileDescriptor parcelFileDescriptor = gmm.openImageFileDescriptor(viewRule.imagePath);
                         Preconditions.checkNotNull(parcelFileDescriptor);
                         try {
                             viewRule.snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
@@ -329,12 +342,11 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
                     }
                 }
             }
-            mSharedViewModel.notifyActRulesChanged();
-            return null;
+            return true;
         }
 
         @Override
-        public void deliverResult(@Nullable Void data) {
+        public void deliverResult(@Nullable Boolean data) {
             if (mDialog.isShowing()) {
                 mDialog.dismiss();
             }
@@ -347,8 +359,8 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         private void releaseResources() {
             List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
             for (ViewRule rule : viewRules) {
-                recycleBitmap(rule.snapshot);
-                recycleBitmap(rule.thumbnail);
+                recycleNullableBitmap(rule.snapshot);
+                recycleNullableBitmap(rule.thumbnail);
             }
         }
     }
