@@ -61,8 +61,8 @@
 
     <string name="dialog_loading">噢! 伙计 让我来看看这里有些什么</string>
     <string name="snack_bar_msg_revert_rule_fail">恢复规则失败</string>
-    <string name="share_crash_info">复制给我的老伙计</string>
-    <string name="crash_tip">\"    我想 你遇到些麻烦 说实话我真不想看到这样情况但是它的确出现了 噢 我亲爱的上帝也不能保佑它可以完美的运行 是的 我保证 不过你应该告诉我也许可以试试修复\n\n\"</string>
+    <string name="dialog_btn_copy">复制给我的老伙计</string>
+    <string name="crash_tip">    我想你应该遇了些麻烦 天知道这该死的程序都干了些什么 我想你应该把下面这些奇奇怪怪的日志复制给老伙计 也许有用吧 是的 我是说也许 谁知道呢\n\n</string>
     <string name="wechat_donate_tips">伙计 二维码已经放到相册了 点击+号扫一扫从相册选取</string>
     <string name="update_tips">\t我想你可以试试用上帝模式屏蔽一些令人烦恼的按钮。噢！没错这听起来很有趣。不过这个小家伙有时会像汤姆家那只该死的倔驴一样不听话，别担心伙计们，我会尽快修理好的！\n\n\t伙计们玩的开心记得支持一下你们的老伙计 非常感谢！噢 上帝啊 看看我到底在说些什么我想我应该安静一下…</string>
     <string name="rule_details_field_create_time">创建日期</string>

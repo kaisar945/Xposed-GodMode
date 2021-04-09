@@ -20,7 +20,7 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
  * Created by jrsen on 17-10-21.
  */
 
-final class CrashHandler implements Thread.UncaughtExceptionHandler {
+public final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     private static final String BUG_REPORT_FILE = "crash_log.txt";
     private static File sLogFile;

@@ -1,6 +1,7 @@
 package com.kaisar.xposed.godmode.fragment;
 
 import android.Manifest;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -13,7 +14,9 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.style.RelativeSizeSpan;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -27,6 +30,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
+import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
@@ -43,6 +47,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.kaisar.xposed.godmode.BuildConfig;
+import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
@@ -52,6 +57,7 @@ import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ActRules;
+import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.RuleHelper;
@@ -122,6 +128,11 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onCreate(savedInstanceState);
         //mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
+        String crashLog = CrashHandler.loadCrashLog();
+        if (!TextUtils.isEmpty(crashLog)) {
+            CrashHandler.clearCrashLog();
+            showCrashDialog(crashLog);
+        }
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
         mSharedViewModel.getAppRules().observe(this, new Observer<Map<String, ActRules>>() {
@@ -186,6 +197,36 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         GodModeManager.getDefault().addObserver("*", mRuleObserver);
         LoaderManager.getInstance(this).initLoader(LIST_LOADER_ID, null, this).onContentChanged();
     }
+
+    private void showCrashDialog(final String stackTrace) {
+        new CrashDialogFragment(stackTrace).show(getChildFragmentManager(), "CrashDialog");
+    }
+
+    public static class CrashDialogFragment extends DialogFragment {
+
+        final String stacktrace;
+
+        public CrashDialogFragment(String stacktrace) {
+            this.stacktrace = stacktrace;
+        }
+
+        @NonNull
+        @Override
+        public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
+            SpannableString text = new SpannableString(getString(R.string.crash_tip));
+            SpannableString st = new SpannableString(stacktrace);
+            st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
+            CharSequence message = TextUtils.concat(text, st);
+            return new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.hey_guy)
+                    .setMessage(message)
+                    .setPositiveButton(R.string.dialog_btn_copy, (dialog, which) -> {
+                        Clipboard.putContent(requireContext(), stacktrace);
+                    })
+                    .create();
+        }
+    }
+
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
