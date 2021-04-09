@@ -249,7 +249,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public boolean onPreferenceClick(Preference preference) {
         if (mJoinGroupPreference == preference) {
             showGroupInfoDialog();
-            throw new NullPointerException("just crash");
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(getContext());
         } else {
