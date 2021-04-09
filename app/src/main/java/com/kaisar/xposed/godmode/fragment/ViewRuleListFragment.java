@@ -41,6 +41,7 @@ import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
+import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.Preconditions;

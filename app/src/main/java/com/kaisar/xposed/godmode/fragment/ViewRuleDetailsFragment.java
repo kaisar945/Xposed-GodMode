@@ -29,6 +29,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.preference.ImageViewPreference;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;

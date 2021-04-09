@@ -21,6 +21,7 @@ import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback;
 
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.util.Logger;
+import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.RuleHelper;

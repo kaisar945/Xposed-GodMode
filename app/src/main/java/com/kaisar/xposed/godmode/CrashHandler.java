@@ -8,10 +8,11 @@ import android.content.Intent;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Properties;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
@@ -22,12 +23,12 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     private static final String BUG_REPORT_FILE = "crash_log.txt";
-    private static File logFile;
+    private static File sLogFile;
 
     private final Context context;
 
-    static void init(Context context) {
-        logFile = new File(context.getFilesDir(), BUG_REPORT_FILE);
+    static void install(Context context) {
+        sLogFile = new File(context.getFilesDir(), BUG_REPORT_FILE);
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(context));
     }
 
@@ -37,27 +38,31 @@ final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     @Override
     public void uncaughtException(Thread t, Throwable e) {
-        saveCrashLog(e);
+        recordCrashLog(e);
         Logger.e(TAG, "Crash", e);
         restart(context);
     }
 
-    private void saveCrashLog(Throwable t) {
-        try (FileWriter fw = new FileWriter(logFile)) {
-            Properties properties = new Properties();
-            properties.setProperty("stack_trace", Logger.getStackTraceString(t));
-            properties.store(fw, "godmode");
+    private void recordCrashLog(Throwable t) {
+        try {
+            try (FileChannel fileChannel = new FileOutputStream(sLogFile).getChannel()) {
+                String stackTraceString = Logger.getStackTraceString(t);
+                fileChannel.write(ByteBuffer.wrap(stackTraceString.getBytes()));
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public static String loadCrashLog() {
-        if (logFile.exists()) {
-            try (FileReader fr = new FileReader(logFile)) {
-                Properties properties = new Properties();
-                properties.load(fr);
-                return properties.getProperty("stack_trace");
+        if (sLogFile.exists()) {
+            try {
+                try (FileChannel fileChannel = new FileInputStream(sLogFile).getChannel()) {
+                    ByteBuffer byteBuffer = ByteBuffer.allocate((int) fileChannel.size());
+                    fileChannel.read(byteBuffer);
+                    byteBuffer.flip();
+                    return new String(byteBuffer.array());
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -67,7 +72,7 @@ final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     public static void clearCrashLog() {
         //noinspection ResultOfMethodCallIgnored
-        logFile.delete();
+        sLogFile.delete();
     }
 
     public static void restart(Context context) {

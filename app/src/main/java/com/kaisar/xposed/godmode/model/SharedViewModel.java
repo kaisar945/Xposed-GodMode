@@ -1,4 +1,4 @@
-package com.kaisar.xposed.godmode.fragment;
+package com.kaisar.xposed.godmode.model;
 
 import android.os.Looper;
 

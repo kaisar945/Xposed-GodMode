@@ -11,6 +11,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Menu;
@@ -49,6 +50,7 @@ import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
+import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
@@ -229,12 +231,15 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             GodModeManager.getDefault().setEditMode(enable);
         } else if (mQuickSettingPreference == preference) {
             boolean enable = (boolean) newValue;
-            QuickSettingsCompatService.setComponentState(preference.getContext(), enable);
             Intent intent = new Intent(preference.getContext(), QuickSettingsCompatService.class);
             if (enable) {
-                preference.getContext().startService(intent);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    requireContext().startForegroundService(intent);
+                } else {
+                    requireContext().startService(intent);
+                }
             } else {
-                preference.getContext().stopService(intent);
+                requireContext().stopService(intent);
             }
         }
         return true;
@@ -244,6 +249,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public boolean onPreferenceClick(Preference preference) {
         if (mJoinGroupPreference == preference) {
             showGroupInfoDialog();
+            throw new NullPointerException("just crash");
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(getContext());
         } else {

@@ -120,13 +120,6 @@ public final class QuickSettingsCompatService extends Service implements SharedP
         return sp.getBoolean("editor_switch", false);
     }
 
-    public static void setComponentState(Context context, boolean enable) {
-        PackageManager pm = context.getPackageManager();
-        ComponentName componentName = new ComponentName(context, QuickSettingsCompatService.class);
-        pm.setComponentEnabledSetting(componentName, enable ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                : PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
-    }
-
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (TextUtils.equals(GeneralPreferenceFragment.KEY_EDITOR_SWITCH, key)) {
