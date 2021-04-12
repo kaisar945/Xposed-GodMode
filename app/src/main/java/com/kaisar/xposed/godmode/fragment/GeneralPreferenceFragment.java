@@ -47,7 +47,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.kaisar.xposed.godmode.BuildConfig;
-import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
@@ -128,42 +127,35 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onCreate(savedInstanceState);
         //mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
-        String crashLog = CrashHandler.loadCrashLog();
-        if (!TextUtils.isEmpty(crashLog)) {
-            CrashHandler.clearCrashLog();
-            showCrashDialog(crashLog);
-        }
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.getAppRules().observe(this, new Observer<Map<String, ActRules>>() {
-            @Override
-            public void onChanged(Map<String, ActRules> result) {
+        mSharedViewModel.getCrashLiveData().observe(this, this::showCrashDialog);
+        mSharedViewModel.getAppRules().observe(this, (Observer<Map<String, ActRules>>) result -> {
 //                mLogger.d("更新主页面列表:" + (result != null ? result.size() : result));
-                if (result != null) {
-                    Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
-                    PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
-                    category.removeAll();
-                    PackageManager pm = requireContext().getPackageManager();
-                    for (Map.Entry<String, ActRules> entry : entrySet) {
-                        String packageName = entry.getKey();
-                        Drawable icon;
-                        CharSequence label;
-                        try {
-                            ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
-                            icon = aInfo.loadIcon(pm);
-                            label = aInfo.loadLabel(pm);
-                        } catch (PackageManager.NameNotFoundException ignore) {
-                            icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
-                            label = packageName;
-                        }
-                        Preference preference = new Preference(category.getContext());
-                        preference.setIcon(icon);
-                        preference.setTitle(label);
-                        preference.setSummary(packageName);
-                        preference.setKey(packageName);
-                        preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
-                        category.addPreference(preference);
+            if (result != null) {
+                Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
+                PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
+                category.removeAll();
+                PackageManager pm = requireContext().getPackageManager();
+                for (Map.Entry<String, ActRules> entry : entrySet) {
+                    String packageName = entry.getKey();
+                    Drawable icon;
+                    CharSequence label;
+                    try {
+                        ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
+                        icon = aInfo.loadIcon(pm);
+                        label = aInfo.loadLabel(pm);
+                    } catch (PackageManager.NameNotFoundException ignore) {
+                        icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+                        label = packageName;
                     }
+                    Preference preference = new Preference(category.getContext());
+                    preference.setIcon(icon);
+                    preference.setTitle(label);
+                    preference.setSummary(packageName);
+                    preference.setKey(packageName);
+                    preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
+                    category.addPreference(preference);
                 }
             }
         });

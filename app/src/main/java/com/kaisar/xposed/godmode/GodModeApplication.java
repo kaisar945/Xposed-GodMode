@@ -15,6 +15,11 @@ import androidx.preference.PreferenceManager;
 public final class GodModeApplication extends Application {
 
     public static final String TAG = "GodMode";
+    private static GodModeApplication sApplication;
+
+    public GodModeApplication() {
+        sApplication = this;
+    }
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -39,6 +44,10 @@ public final class GodModeApplication extends Application {
                 startService(service);
             }
         }
+    }
+
+    public static GodModeApplication getApplication() {
+        return sApplication;
     }
 
 }

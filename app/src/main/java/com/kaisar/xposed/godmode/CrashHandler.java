@@ -23,12 +23,10 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 public final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     private static final String BUG_REPORT_FILE = "crash_log.txt";
-    private static File sLogFile;
 
     private final Context context;
 
     static void install(Context context) {
-        sLogFile = new File(context.getFilesDir(), BUG_REPORT_FILE);
         Thread.setDefaultUncaughtExceptionHandler(new CrashHandler(context));
     }
 
@@ -38,14 +36,19 @@ public final class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     @Override
     public void uncaughtException(Thread t, Throwable e) {
-        recordCrashLog(e);
+        recordCrash(e);
         Logger.e(TAG, "Crash", e);
         restart(context);
     }
 
-    private void recordCrashLog(Throwable t) {
+    private static File getLogFile(Context context) {
+        return new File(context.getCacheDir(), BUG_REPORT_FILE);
+    }
+
+    private void recordCrash(Throwable t) {
         try {
-            try (FileChannel fileChannel = new FileOutputStream(sLogFile).getChannel()) {
+            File logFile = getLogFile(context);
+            try (FileChannel fileChannel = new FileOutputStream(logFile).getChannel()) {
                 String stackTraceString = Logger.getStackTraceString(t);
                 fileChannel.write(ByteBuffer.wrap(stackTraceString.getBytes()));
             }
@@ -54,10 +57,11 @@ public final class CrashHandler implements Thread.UncaughtExceptionHandler {
         }
     }
 
-    public static String loadCrashLog() {
-        if (sLogFile.exists()) {
+    public static String detectCrash(Context context) {
+        File logFile = getLogFile(context);
+        if (logFile.exists()) {
             try {
-                try (FileChannel fileChannel = new FileInputStream(sLogFile).getChannel()) {
+                try (FileChannel fileChannel = new FileInputStream(logFile).getChannel()) {
                     ByteBuffer byteBuffer = ByteBuffer.allocate((int) fileChannel.size());
                     fileChannel.read(byteBuffer);
                     byteBuffer.flip();
@@ -65,14 +69,12 @@ public final class CrashHandler implements Thread.UncaughtExceptionHandler {
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+            } finally {
+                //noinspection ResultOfMethodCallIgnored
+                logFile.delete();
             }
         }
-        return "";
-    }
-
-    public static void clearCrashLog() {
-        //noinspection ResultOfMethodCallIgnored
-        sLogFile.delete();
+        return null;
     }
 
     public static void restart(Context context) {

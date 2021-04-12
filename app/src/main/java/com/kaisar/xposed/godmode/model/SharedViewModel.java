@@ -5,8 +5,9 @@ import android.os.Looper;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.kaisar.xposed.godmode.CrashHandler;
+import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
@@ -18,18 +19,24 @@ import java.util.List;
 
 public class SharedViewModel extends ViewModel {
 
-    private final Logger mLogger;
+    private final MutableLiveData<String> mCrashMessage = new MutableLiveData<>();
     private final MutableLiveData<AppRules> mAppRules = new MutableLiveData<>();
     private final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
     private final MutableLiveData<List<ViewRule>> mActRules = new MutableLiveData<>();
 
     public SharedViewModel() {
-        this.mLogger = Logger.getLogger("流程");
+        String crashMessage = CrashHandler.detectCrash(GodModeApplication.getApplication());
+        if (crashMessage != null) {
+            mCrashMessage.setValue(crashMessage);
+        }
+    }
+
+    public MutableLiveData<String> getCrashLiveData() {
+        return mCrashMessage;
     }
 
     public void reloadAppRules() {
         AppRules appRules = GodModeManager.getDefault().getAllRules();
-//        mLogger.d("重新加載應用規則列表:" + appRules.size());
         if (isMainThread()) {
             mAppRules.setValue(appRules);
         } else {
@@ -56,7 +63,6 @@ public class SharedViewModel extends ViewModel {
     public void updateViewRuleList(String packageName) {
         ArrayList<ViewRule> viewRules = new ArrayList<>();
         AppRules appRules = mAppRules.getValue();
-//        mLogger.d("重新加載appRules列表:" + appRules.size());
         if (appRules.containsKey(packageName)) {
             ActRules actRules = appRules.get(packageName);
             if (!actRules.isEmpty()) {
@@ -72,7 +78,6 @@ public class SharedViewModel extends ViewModel {
                 }));
             }
         }
-//        mLogger.d("重新加載act列表:" + viewRules);
         mActRules.setValue(viewRules);
     }
 
