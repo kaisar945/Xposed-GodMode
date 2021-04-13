@@ -8,9 +8,13 @@ public final class LocalRepository {
 
     private static AppRules sAppRules;
 
+    public static AppRules reloadAllAppRules() {
+        return GodModeManager.getDefault().getAllRules();
+    }
+
     public static AppRules getAllAppRules() {
         if (sAppRules == null) {
-            sAppRules = GodModeManager.getDefault().getAllRules();
+            sAppRules = reloadAllAppRules();
         }
         return sAppRules;
     }

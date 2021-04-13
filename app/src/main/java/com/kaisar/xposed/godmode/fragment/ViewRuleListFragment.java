@@ -28,7 +28,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.res.TypedArrayUtils;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
@@ -93,27 +92,18 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
 //        mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.getSelectedPackage().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String packageName) {
-                mSharedViewModel.updateViewRuleList(packageName);
-            }
-        });
-        mSharedViewModel.getActRules().observe(this, new Observer<List<ViewRule>>() {
-            @Override
-            public void onChanged(List<ViewRule> viewRules) {
-                if (viewRules.isEmpty()) {
+        mSharedViewModel.selectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
+        mSharedViewModel.actRules.observe(this, viewRules -> {
+            if (viewRules.isEmpty()) {
 //                    mLogger.d("規則列表頁爲空返回上一個頁面");
-                    requireActivity().onBackPressed();
-                } else {
+                requireActivity().onBackPressed();
+            } else {
 //                    mLogger.d("重新加載規則列表");
-                    LoaderManager.getInstance(ViewRuleListFragment.this).restartLoader(THUMBNAIL_LOADER_ID, null, ViewRuleListFragment.this).onContentChanged();
-                }
+                LoaderManager.getInstance(ViewRuleListFragment.this).restartLoader(THUMBNAIL_LOADER_ID, null, ViewRuleListFragment.this).onContentChanged();
             }
         });
     }
 
-    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View viewGroup = super.onCreateView(inflater, container, savedInstanceState);
@@ -128,7 +118,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
     @Override
     public void onResume() {
         super.onResume();
-        requireActivity().setTitle(R.string.title_app_rule);
+        mSharedViewModel.updateTitle(R.string.title_app_rule);
     }
 
     final class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
@@ -154,7 +144,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, final int position) {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             ViewRule viewRule = viewRules.get(position);
 
             if (Preconditions.checkBitmap(viewRule.thumbnail)) {
@@ -206,7 +196,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
 
         @Override
         public int getItemCount() {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             return viewRules.size();
         }
 
@@ -229,7 +219,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
     @Override
     public void onDestroy() {
         super.onDestroy();
-        List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+        List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
         for (ViewRule viewRule : viewRules) {
             recycleNullableBitmap(viewRule.snapshot);
             viewRule.snapshot = null;
@@ -326,7 +316,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         @Override
         public Boolean loadInBackground() {
             GodModeManager gmm = GodModeManager.getDefault();
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             for (ViewRule viewRule : viewRules) {
                 if (viewRule.thumbnail == null && !TextUtils.isEmpty(viewRule.imagePath)) {
                     try {
@@ -358,7 +348,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         }
 
         private void releaseResources() {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             for (ViewRule rule : viewRules) {
                 recycleNullableBitmap(rule.snapshot);
                 recycleNullableBitmap(rule.thumbnail);
@@ -391,7 +381,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         @Nullable
         @Override
         public String loadInBackground() {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             return RuleHelper.exportRules(viewRules.toArray(new ViewRule[0]));
         }
 

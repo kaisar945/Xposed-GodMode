@@ -1,13 +1,18 @@
 package com.kaisar.xposed.godmode.model;
 
 import android.os.Looper;
+import android.text.TextUtils;
 
+import androidx.annotation.StringRes;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.GodModeApplication;
+import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+import com.kaisar.xposed.godmode.repository.LocalRepository;
+import com.kaisar.xposed.godmode.repository.RemoteRepository;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
@@ -16,53 +21,62 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+
+import retrofit2.Callback;
 
 public class SharedViewModel extends ViewModel {
 
-    private final MutableLiveData<String> mCrashMessage = new MutableLiveData<>();
-    private final MutableLiveData<AppRules> mAppRules = new MutableLiveData<>();
-    private final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
-    private final MutableLiveData<List<ViewRule>> mActRules = new MutableLiveData<>();
+    public final MutableLiveData<Integer> title = new MutableLiveData<>();
+    public final MutableLiveData<String> crash = new MutableLiveData<>();
+    public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
+    public final MutableLiveData<String> selectedPackage = new MutableLiveData<>();
+    public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
 
     public SharedViewModel() {
+        GodModeManager.getDefault().addObserver("*", new IObserver.Stub() {
+            @Override
+            public void onEditModeChanged(boolean enable) {
+            }
+
+            @Override
+            public void onViewRuleChanged(String packageName, ActRules actRules) {
+                appRules.postValue(LocalRepository.reloadAllAppRules());
+                if (TextUtils.equals(packageName, selectedPackage.getValue())) {
+                    selectedPackage.postValue(packageName);
+                }
+            }
+        });
         String crashMessage = CrashHandler.detectCrash(GodModeApplication.getApplication());
         if (crashMessage != null) {
-            mCrashMessage.setValue(crashMessage);
+            crash.setValue(crashMessage);
         }
-    }
-
-    public MutableLiveData<String> getCrashLiveData() {
-        return mCrashMessage;
     }
 
     public void reloadAppRules() {
         AppRules appRules = GodModeManager.getDefault().getAllRules();
         if (isMainThread()) {
-            mAppRules.setValue(appRules);
+            this.appRules.setValue(appRules);
         } else {
-            mAppRules.postValue(appRules);
+            this.appRules.postValue(appRules);
         }
     }
 
-    public MutableLiveData<AppRules> getAppRules() {
-        return mAppRules;
+    public void updateTitle(@StringRes int titleId) {
+        title.setValue(titleId);
     }
 
-    public MutableLiveData<List<ViewRule>> getActRules() {
-        return mActRules;
-    }
-
-    public MutableLiveData<String> getSelectedPackage() {
-        return mSelectedPackage;
+    public void getGroupInfo(Callback<Map<String, String>[]> cb) {
+        RemoteRepository.fetchGroupInfo(cb);
     }
 
     public void updateSelectedPackage(String packageName) {
-        mSelectedPackage.postValue(packageName);
+        selectedPackage.postValue(packageName);
     }
 
     public void updateViewRuleList(String packageName) {
         ArrayList<ViewRule> viewRules = new ArrayList<>();
-        AppRules appRules = mAppRules.getValue();
+        AppRules appRules = this.appRules.getValue();
         if (appRules.containsKey(packageName)) {
             ActRules actRules = appRules.get(packageName);
             if (!actRules.isEmpty()) {
@@ -78,7 +92,7 @@ public class SharedViewModel extends ViewModel {
                 }));
             }
         }
-        mActRules.setValue(viewRules);
+        actRules.setValue(viewRules);
     }
 
     private boolean isMainThread() {

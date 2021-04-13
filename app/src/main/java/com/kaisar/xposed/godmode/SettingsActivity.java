@@ -5,6 +5,9 @@ import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+
+import com.kaisar.xposed.godmode.model.SharedViewModel;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -12,6 +15,8 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_container_activity);
+        SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
+        sharedViewModel.title.observe(this, this::setTitle);
     }
 
     public void startPreferenceFragment(Fragment fragment) {

@@ -20,7 +20,6 @@ import android.text.style.RelativeSizeSpan;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultCallback;
@@ -43,11 +42,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.kaisar.xposed.godmode.BuildConfig;
-import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
@@ -59,17 +54,19 @@ import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
+import com.kaisar.xposed.godmode.util.Preconditions;
 import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Map;
 import java.util.Set;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
@@ -94,7 +91,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public static final String KEY_DONATE = "donate";
     public static final String KEY_APP_RULES = "app_rules";
 
-
     private SwitchPreferenceCompat mEditorSwitchPreference;
     private CheckBoxPreference mQuickSettingPreference;
     private Preference mJoinGroupPreference;
@@ -103,35 +99,14 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     private ActivityResultLauncher<String> mPickFileLauncher;
     private SharedViewModel mSharedViewModel;
 
-    private Logger mLogger;
-
-    private final IObserver mRuleObserver = new IObserver.Stub() {
-        @Override
-        public void onEditModeChanged(boolean enable) {
-            // Don't care
-        }
-
-        @Override
-        public void onViewRuleChanged(String packageName, ActRules actRules) {
-            mLogger.d("远端规则变化");
-            mSharedViewModel.reloadAppRules();
-            if (TextUtils.equals(packageName, mSharedViewModel.getSelectedPackage().getValue())) {
-                mLogger.d("更新选中列表");
-                mSharedViewModel.updateSelectedPackage(packageName);
-            }
-        }
-    };
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.getCrashLiveData().observe(this, this::showCrashDialog);
-        mSharedViewModel.getAppRules().observe(this, (Observer<Map<String, ActRules>>) result -> {
-//                mLogger.d("更新主页面列表:" + (result != null ? result.size() : result));
+        mSharedViewModel.crash.observe(this, this::showCrashDialog);
+        mSharedViewModel.appRules.observe(this, (Observer<Map<String, ActRules>>) result -> {
             if (result != null) {
                 Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
                 PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
@@ -186,7 +161,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 }).forceLoad();
             }
         });
-        GodModeManager.getDefault().addObserver("*", mRuleObserver);
         LoaderManager.getInstance(this).initLoader(LIST_LOADER_ID, null, this).onContentChanged();
     }
 
@@ -219,7 +193,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         }
     }
 
-
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.xml.pref_general);
@@ -246,7 +219,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     @Override
     public void onResume() {
         super.onResume();
-        requireActivity().setTitle(R.string.app_name);
+        mSharedViewModel.updateTitle(R.string.app_name);
     }
 
     @Override
@@ -254,7 +227,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(
                 mEditorSwitchPreference.getContext()).unregisterOnSharedPreferenceChangeListener(this);
-        GodModeManager.getDefault().removeObserver("*", mRuleObserver);
     }
 
     @Override
@@ -302,16 +274,13 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 .setTitle(R.string.hey_guy)
                 .setMessage(R.string.not_active_module)
                 .setPositiveButton(android.R.string.ok, null)
-                .setNegativeButton(R.string.go_setting, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
-                        if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
-                            Intent launchIntent = requireContext().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
-                            startActivity(launchIntent);
-                        } else {
-                            Snackbar.make(requireActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
-                        }
+                .setNegativeButton(R.string.go_setting, (dialog, which) -> {
+                    XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
+                    if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
+                        Intent launchIntent = requireContext().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
+                        startActivity(launchIntent);
+                    } else {
+                        Snackbar.make(requireActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
                     }
                 })
                 .show();
@@ -324,22 +293,9 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 .setPositiveButton(R.string.dialog_btn_alipay, null)
                 .setNegativeButton(R.string.dialog_btn_wxpay, null)
                 .create();
-        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
-            @Override
-            public void onShow(DialogInterface di) {
-                dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        DonateHelper.startAliPayDonate(v.getContext());
-                    }
-                });
-                dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        DonateHelper.startWxPayDonate(v.getContext());
-                    }
-                });
-            }
+        dialog.setOnShowListener(di -> {
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> DonateHelper.startAliPayDonate(v.getContext()));
+            dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> DonateHelper.startWxPayDonate(v.getContext()));
         });
         dialog.show();
     }
@@ -349,65 +305,45 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.setMessage(getText(R.string.dialog_message_query_community));
         progressDialog.show();
-        new Thread(new Runnable() {
+        mSharedViewModel.getGroupInfo(new Callback<Map<String, String>[]>() {
             @Override
-            public void run() {
+            public void onResponse(@NonNull Call<Map<String, String>[]> call, @NonNull Response<Map<String, String>[]> response) {
+                if (progressDialog.isShowing()) {
+                    progressDialog.dismiss();
+                }
                 try {
-                    URL url = new URL("https://gitee.com/kaisarzu/Xposed-GodMode/raw/dev/community.json");
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode != HttpURLConnection.HTTP_OK) {
-                        throw new Exception("retrieve response error " + responseCode);
+                    if (!response.isSuccessful()) throw new Exception("not successful");
+                    Map<String, String>[] body = Preconditions.checkNotNull(response.body());
+                    final int N = body.length;
+                    String[] names = new String[N];
+                    String[] links = new String[N];
+                    for (int i = 0; i < N; i++) {
+                        Map<String, String> map = body[i];
+                        names[i] = map.get("group_name");
+                        links[i] = map.get("group_link");
                     }
-                    InputStream in = conn.getInputStream();
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[4096];
-                    for (int len; (len = in.read(buffer)) > 0; ) {
-                        baos.write(buffer, 0, len);
-                    }
-                    String json = new String(baos.toByteArray());
-                    JsonArray jsonArray = (JsonArray) JsonParser.parseString(json);
-                    int size = jsonArray.size();
-                    final String[] names = new String[size];
-                    final String[] links = new String[size];
-                    for (int i = 0; i < size; i++) {
-                        JsonObject jsonObject = (JsonObject) jsonArray.get(i);
-                        names[i] = jsonObject.get("group_name").getAsString();
-                        links[i] = jsonObject.get("group_link").getAsString();
-                    }
-                    requireActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (progressDialog.isShowing()) {
-                                progressDialog.dismiss();
-                            }
-                            new AlertDialog.Builder(requireContext())
-                                    .setItems(names, new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            try {
-                                                Intent intent = new Intent(Intent.ACTION_VIEW);
-                                                intent.setData(Uri.parse(links[which]));
-                                                startActivity(intent);
-                                            } catch (Exception ignore) {
-                                            }
-                                        }
-                                    }).show();
-                        }
-                    });
-                } catch (final Exception e) {
-                    requireActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (progressDialog.isShowing()) {
-                                progressDialog.dismiss();
-                            }
-                            Toast.makeText(requireContext(), "获取群组信息失败" + e.getMessage(), Toast.LENGTH_LONG).show();
-                        }
-                    });
+                    new AlertDialog.Builder(requireContext())
+                            .setItems(names, (dialog, which) -> {
+                                try {
+                                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                                    intent.setData(Uri.parse(links[which]));
+                                    startActivity(intent);
+                                } catch (Exception ignore) {
+                                }
+                            }).show();
+                } catch (Exception e) {
+                    Toast.makeText(requireContext(), "获取群组信息失败:" + response.code(), Toast.LENGTH_LONG).show();
                 }
             }
-        }).start();
+
+            @Override
+            public void onFailure(@NonNull Call<Map<String, String>[]> call, @NonNull Throwable t) {
+                if (progressDialog.isShowing()) {
+                    progressDialog.dismiss();
+                }
+                Toast.makeText(requireContext(), "获取群组信息失败" + t.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     @Override

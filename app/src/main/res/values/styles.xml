@@ -9,6 +9,11 @@
         <item name="preferenceTheme">@style/PreferenceThemeOverlay.v14.Material</item>
         <item name="android:textViewStyle">@style/RobotoTextViewStyle</item>
         <item name="android:buttonStyle">@style/RobotoButtonStyle</item>
+        <item name="alertDialogTheme">@style/AlertDialog</item>
+    </style>
+
+    <style name="AlertDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorAccent">@color/colorAccent</item>
     </style>
 
     <style name="TextAppearance.Design.Snackbar.Message" parent="android:TextAppearance">

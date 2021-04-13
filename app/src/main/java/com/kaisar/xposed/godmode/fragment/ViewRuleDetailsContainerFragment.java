@@ -61,11 +61,11 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mSharedViewModel.updateTitle(R.string.title_rule_details);
     }
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        requireActivity().setTitle(R.string.title_rule_details);
     }
 
     private final OnPageChangeCallback mCallback = new OnPageChangeCallback() {
@@ -93,7 +93,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+        List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
         ViewRule viewRule = viewRules.get(mCurIndex);
         if (item.getItemId() == R.id.menu_revert) {
             mSharedViewModel.deleteRule(viewRule);
@@ -124,7 +124,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         @NonNull
         @Override
         public Fragment createFragment(int position) {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             ViewRule viewRule = viewRules.get(position);
             ViewRuleDetailsFragment fragment = new ViewRuleDetailsFragment();
             fragment.setIcon(mIcon);
@@ -136,7 +136,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 
         @Override
         public int getItemCount() {
-            List<ViewRule> viewRules = mSharedViewModel.getActRules().getValue();
+            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             return viewRules.size();
         }
     }
