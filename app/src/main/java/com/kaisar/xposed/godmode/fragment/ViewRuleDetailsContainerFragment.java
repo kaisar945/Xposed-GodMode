@@ -22,9 +22,9 @@ import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
+import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
-import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.List;
@@ -105,7 +105,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
                 return true;
             }
             try {
-                String filepath = RuleHelper.exportRules(viewRule);
+                String filepath = LocalRepository.exportRules(viewRule);
                 Snackbar.make(requireActivity(), getString(R.string.export_successful, filepath), Snackbar.LENGTH_LONG).show();
             } catch (Exception e) {
                 Logger.e(TAG, "export single rule fail", e);

@@ -41,10 +41,10 @@ import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
+import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.List;
@@ -378,11 +378,10 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
             }
         }
 
-        @Nullable
         @Override
         public String loadInBackground() {
             List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            return RuleHelper.exportRules(viewRules.toArray(new ViewRule[0]));
+            return LocalRepository.exportRules(viewRules.toArray(new ViewRule[0]));
         }
 
         @Override

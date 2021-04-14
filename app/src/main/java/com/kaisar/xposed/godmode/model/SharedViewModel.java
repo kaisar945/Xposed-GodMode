@@ -1,5 +1,10 @@
 package com.kaisar.xposed.godmode.model;
 
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
@@ -11,22 +16,28 @@ import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.repository.RemoteRepository;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import retrofit2.Callback;
 
 public class SharedViewModel extends ViewModel {
 
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     public final MutableLiveData<Integer> title = new MutableLiveData<>();
     public final MutableLiveData<String> crash = new MutableLiveData<>();
     public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
@@ -34,7 +45,7 @@ public class SharedViewModel extends ViewModel {
     public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
 
     public SharedViewModel() {
-        GodModeManager.getDefault().addObserver("*", new IObserver.Stub() {
+        LocalRepository.addObserver("*", new IObserver.Stub() {
             @Override
             public void onEditModeChanged(boolean enable) {
             }
@@ -47,19 +58,17 @@ public class SharedViewModel extends ViewModel {
                 }
             }
         });
+    }
+
+    public void detectCrash() {
         String crashMessage = CrashHandler.detectCrash(GodModeApplication.getApplication());
         if (crashMessage != null) {
             crash.setValue(crashMessage);
         }
     }
 
-    public void reloadAppRules() {
-        AppRules appRules = GodModeManager.getDefault().getAllRules();
-        if (isMainThread()) {
-            this.appRules.setValue(appRules);
-        } else {
-            this.appRules.postValue(appRules);
-        }
+    public void loadAppRules() {
+        executor.execute(() -> appRules.postValue(LocalRepository.reloadAllAppRules()));
     }
 
     public void updateTitle(@StringRes int titleId) {
@@ -109,6 +118,48 @@ public class SharedViewModel extends ViewModel {
 
     public boolean deleteRule(ViewRule rule) {
         return GodModeManager.getDefault().deleteRule(rule.packageName, rule);
+    }
+
+    public void setIconHidden(Context context, boolean hidden) {
+        PackageManager pm = context.getPackageManager();
+        ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
+        pm.setComponentEnabledSetting(cmp, hidden ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+    }
+
+    public boolean isIconHidden(Context context) {
+        PackageManager pm = context.getPackageManager();
+        ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
+        return pm.getComponentEnabledSetting(cmp) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+    }
+
+    public interface ImportCallback {
+        void onSuccess();
+
+        void onFailure(Throwable t);
+    }
+
+    public void importExternalRules(Context context, Uri uri, ImportCallback callback) {
+        Handler handler = new Handler();
+        executor.execute(() -> {
+            try (InputStream in = context.getContentResolver().openInputStream(uri)) {
+                File file = new File(context.getCacheDir(), "app.gm");
+                try {
+                    if (FileUtils.copy(in, file)) {
+                        if (LocalRepository.importRules(file.getPath())) {
+                            handler.post(callback::onSuccess);
+                        } else {
+                            handler.post(() -> callback.onFailure(new Exception("import fail")));
+                        }
+                    } else {
+                        handler.post(() -> callback.onFailure(new Exception("copy file error")));
+                    }
+                } finally {
+                    FileUtils.delete(file);
+                }
+            } catch (Exception e) {
+                handler.post(() -> callback.onFailure(e));
+            }
+        });
     }
 
 }

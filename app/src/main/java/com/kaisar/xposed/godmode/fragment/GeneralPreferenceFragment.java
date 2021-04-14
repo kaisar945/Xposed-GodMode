@@ -1,11 +1,8 @@
 package com.kaisar.xposed.godmode.fragment;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.app.ProgressDialog;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
@@ -22,19 +19,12 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
-import androidx.fragment.app.DialogFragment;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.loader.app.LoaderManager;
-import androidx.loader.content.AsyncTaskLoader;
-import androidx.loader.content.Loader;
 import androidx.preference.CheckBoxPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
@@ -47,28 +37,22 @@ import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.injection.util.FileUtils;
-import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ActRules;
+import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.util.RuleHelper;
 import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
-import java.io.File;
-import java.io.InputStream;
 import java.util.Map;
 import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
 
 /**
@@ -77,10 +61,7 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
 public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements
         Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
-        SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<Void> {
-
-    private static final int LIST_LOADER_ID = 0x01;
-    private static final int IMPORT_LOADER_ID = 0x02;
+        SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String SETTING_PREFS = "settings";
     private static final String KEY_VERSION_CODE = "version_code";
@@ -96,102 +77,86 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     private Preference mJoinGroupPreference;
     private Preference mDonatePreference;
 
-    private ActivityResultLauncher<String> mPickFileLauncher;
+    private ProgressDialog mLoadingDialog;
+
+    private ActivityResultLauncher<String> mFileLauncher;
     private SharedViewModel mSharedViewModel;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+        mLoadingDialog = new ProgressDialog(requireContext());
+        mLoadingDialog.setMessage(getText(R.string.dialog_loading));
+        mLoadingDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        mLoadingDialog.setCancelable(false);
+        mLoadingDialog.setCanceledOnTouchOutside(false);
+
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
         mSharedViewModel.crash.observe(this, this::showCrashDialog);
-        mSharedViewModel.appRules.observe(this, (Observer<Map<String, ActRules>>) result -> {
-            if (result != null) {
-                Set<Map.Entry<String, ActRules>> entrySet = result.entrySet();
-                PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
-                category.removeAll();
-                PackageManager pm = requireContext().getPackageManager();
-                for (Map.Entry<String, ActRules> entry : entrySet) {
-                    String packageName = entry.getKey();
-                    Drawable icon;
-                    CharSequence label;
-                    try {
-                        ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
-                        icon = aInfo.loadIcon(pm);
-                        label = aInfo.loadLabel(pm);
-                    } catch (PackageManager.NameNotFoundException ignore) {
-                        icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
-                        label = packageName;
-                    }
-                    Preference preference = new Preference(category.getContext());
-                    preference.setIcon(icon);
-                    preference.setTitle(label);
-                    preference.setSummary(packageName);
-                    preference.setKey(packageName);
-                    preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
-                    category.addPreference(preference);
-                }
-            }
-        });
-        mPickFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), new ActivityResultCallback<Uri>() {
+        mSharedViewModel.detectCrash();
+        mSharedViewModel.appRules.observe(this, this::updatePreference);
+        mLoadingDialog.show();
+        mSharedViewModel.loadAppRules();
+        mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
+    }
+
+    private void onActivityResult(Uri uri) {
+        if (uri == null) return;
+        ProgressDialog dialog = new ProgressDialog(requireContext());
+        dialog.setMessage(getText(R.string.dialog_message_import));
+        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
+        dialog.show();
+        mSharedViewModel.importExternalRules(requireContext(), uri, new SharedViewModel.ImportCallback() {
             @Override
-            public void onActivityResult(final Uri result) {
-                LoaderManager.getInstance(GeneralPreferenceFragment.this).initLoader(IMPORT_LOADER_ID, null, new LoaderManager.LoaderCallbacks<Boolean>() {
-                    @NonNull
-                    @Override
-                    public Loader<Boolean> onCreateLoader(int id, @Nullable Bundle args) {
-                        return new ImportTaskLoader(requireContext(), result);
-                    }
+            public void onSuccess() {
+                dialog.dismiss();
+                Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
+            }
 
-                    @Override
-                    public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean ok) {
-                        if (ok) {
-                            mSharedViewModel.reloadAppRules();
-                            Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
-                        } else {
-                            Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
-                        }
-                        LoaderManager.getInstance(GeneralPreferenceFragment.this).destroyLoader(IMPORT_LOADER_ID);
-                    }
-
-                    @Override
-                    public void onLoaderReset(@NonNull Loader<Boolean> loader) {
-                    }
-                }).forceLoad();
+            @Override
+            public void onFailure(Throwable t) {
+                dialog.dismiss();
+                Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
             }
         });
-        LoaderManager.getInstance(this).initLoader(LIST_LOADER_ID, null, this).onContentChanged();
     }
 
-    private void showCrashDialog(final String stackTrace) {
-        new CrashDialogFragment(stackTrace).show(getChildFragmentManager(), "CrashDialog");
-    }
-
-    public static class CrashDialogFragment extends DialogFragment {
-
-        final String stacktrace;
-
-        public CrashDialogFragment(String stacktrace) {
-            this.stacktrace = stacktrace;
+    private void updatePreference(AppRules appRules) {
+        if (mLoadingDialog.isShowing()) {
+            mLoadingDialog.dismiss();
         }
-
-        @NonNull
-        @Override
-        public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-            SpannableString text = new SpannableString(getString(R.string.crash_tip));
-            SpannableString st = new SpannableString(stacktrace);
-            st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
-            CharSequence message = TextUtils.concat(text, st);
-            return new AlertDialog.Builder(requireContext())
-                    .setTitle(R.string.hey_guy)
-                    .setMessage(message)
-                    .setPositiveButton(R.string.dialog_btn_copy, (dialog, which) -> {
-                        Clipboard.putContent(requireContext(), stacktrace);
-                    })
-                    .create();
+        if (appRules != null) {
+            Set<Map.Entry<String, ActRules>> entries = appRules.entrySet();
+            PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
+            category.removeAll();
+            PackageManager pm = requireContext().getPackageManager();
+            for (Map.Entry<String, ActRules> entry : entries) {
+                String packageName = entry.getKey();
+                Drawable icon;
+                CharSequence label;
+                try {
+                    ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
+                    icon = aInfo.loadIcon(pm);
+                    label = aInfo.loadLabel(pm);
+                } catch (PackageManager.NameNotFoundException ignore) {
+                    icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+                    label = packageName;
+                }
+                Preference preference = new Preference(category.getContext());
+                preference.setIcon(icon);
+                preference.setTitle(label);
+                preference.setSummary(packageName);
+                preference.setKey(packageName);
+                preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
+                category.addPreference(preference);
+            }
         }
     }
+
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -209,8 +174,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         SharedPreferences sp = requireContext().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
         int previousVersionCode = sp.getInt(KEY_VERSION_CODE, 0);
         if (previousVersionCode != BuildConfig.VERSION_CODE) {
-            showUpdatePolicyDialog();
             sp.edit().putInt(KEY_VERSION_CODE, BuildConfig.VERSION_CODE).apply();
+            showUpdatePolicyDialog();
         } else if (!XposedEnvironment.isModuleActive(getContext())) {
             showEnableModuleDialog();
         }
@@ -255,7 +220,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         if (mJoinGroupPreference == preference) {
             showGroupInfoDialog();
         } else if (mDonatePreference == preference) {
-            DonateHelper.showDonateDialog(getContext());
+            DonateHelper.showDonateDialog(requireContext());
         } else {
             String packageName = preference.getSummary().toString();
             mSharedViewModel.updateSelectedPackage(packageName);
@@ -267,6 +232,54 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             activity.startPreferenceFragment(fragment);
         }
         return true;
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
+        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
+            mEditorSwitchPreference.setChecked(sp.getBoolean(key, false));
+        } else if (TextUtils.equals(key, KEY_QUICK_SETTING)) {
+            mQuickSettingPreference.setChecked(sp.getBoolean(key, false));
+        }
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_general, menu);
+        MenuItem item = menu.findItem(R.id.menu_icon_switch);
+        boolean hidden = mSharedViewModel.isIconHidden(requireContext());
+        item.setTitle(!hidden ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.menu_import_rules) {
+            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
+            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                return true;
+            }
+            mFileLauncher.launch("*/*");
+        } else if (item.getItemId() == R.id.menu_icon_switch) {
+            boolean hidden = mSharedViewModel.isIconHidden(requireContext());
+            mSharedViewModel.setIconHidden(requireContext(), hidden = !hidden);
+            item.setTitle(hidden ? R.string.menu_icon_switch_show : R.string.menu_icon_switch_hide);
+        }
+        return true;
+    }
+
+    private void showCrashDialog(final String stackTrace) {
+        SpannableString text = new SpannableString(getString(R.string.crash_tip));
+        SpannableString st = new SpannableString(stackTrace);
+        st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
+        CharSequence message = TextUtils.concat(text, st);
+        new AlertDialog.Builder(requireContext())
+                .setTitle(R.string.hey_guy)
+                .setMessage(message)
+                .setPositiveButton(R.string.dialog_btn_copy, (dialog, which) -> {
+                    Clipboard.putContent(requireContext(), stackTrace);
+                })
+                .show();
     }
 
     private void showEnableModuleDialog() {
@@ -287,17 +300,12 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     private void showUpdatePolicyDialog() {
-        final AlertDialog dialog = new AlertDialog.Builder(requireContext())
+        new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.welcome_title)
                 .setMessage(R.string.update_tips)
-                .setPositiveButton(R.string.dialog_btn_alipay, null)
-                .setNegativeButton(R.string.dialog_btn_wxpay, null)
-                .create();
-        dialog.setOnShowListener(di -> {
-            dialog.getButton(DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> DonateHelper.startAliPayDonate(v.getContext()));
-            dialog.getButton(DialogInterface.BUTTON_NEGATIVE).setOnClickListener(v -> DonateHelper.startWxPayDonate(v.getContext()));
-        });
-        dialog.show();
+                .setPositiveButton(R.string.dialog_btn_alipay, (dialog1, which) -> DonateHelper.startAliPayDonate(requireContext()))
+                .setNegativeButton(R.string.dialog_btn_wxpay, (dialog12, which) -> DonateHelper.startWxPayDonate(requireContext()))
+                .show();
     }
 
     private void showGroupInfoDialog() {
@@ -344,159 +352,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 Toast.makeText(requireContext(), "获取群组信息失败" + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    @Override
-    public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
-        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
-            mEditorSwitchPreference.setChecked(sp.getBoolean(key, false));
-        } else if (TextUtils.equals(key, KEY_QUICK_SETTING)) {
-            mQuickSettingPreference.setChecked(sp.getBoolean(key, false));
-        }
-    }
-
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.menu_general, menu);
-        MenuItem item = menu.findItem(R.id.menu_icon_switch);
-        Context context = requireContext();
-        PackageManager pm = context.getPackageManager();
-        ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
-        boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
-        item.setTitle(enable ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menu_import_rules) {
-            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
-            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-                return true;
-            }
-            mPickFileLauncher.launch("*/*");
-        } else if (item.getItemId() == R.id.menu_icon_switch) {
-            Context context = requireContext();
-            PackageManager pm = context.getPackageManager();
-            ComponentName cmp = new ComponentName(context.getPackageName(), "com.kaisar.xposed.godmode.SettingsAliasActivity");
-            boolean enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
-            pm.setComponentEnabledSetting(cmp, enable ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
-            enable = pm.getComponentEnabledSetting(cmp) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
-            item.setTitle(enable ? R.string.menu_icon_switch_hide : R.string.menu_icon_switch_show);
-        }
-        return true;
-    }
-
-    @NonNull
-    @Override
-    public Loader<Void> onCreateLoader(int id, @Nullable Bundle args) {
-        return new ListLoader(requireContext(), mSharedViewModel);
-    }
-
-    @Override
-    public void onLoadFinished(@NonNull Loader<Void> loader, Void data) {
-    }
-
-    @Override
-    public void onLoaderReset(@NonNull Loader<Void> loader) {
-    }
-
-    private static final class ListLoader extends AsyncTaskLoader<Void> {
-
-        private final ProgressDialog dialog;
-        private final SharedViewModel sharedViewModel;
-
-        public ListLoader(@NonNull Context context, SharedViewModel sharedViewModel) {
-            super(context);
-            this.sharedViewModel = sharedViewModel;
-            dialog = new ProgressDialog(context);
-            dialog.setMessage(context.getText(R.string.dialog_loading));
-            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            dialog.setCancelable(false);
-            dialog.setCanceledOnTouchOutside(false);
-        }
-
-        @Override
-        protected void onStartLoading() {
-            Logger.d(TAG, "onStartLoading");
-            super.onStartLoading();
-            if (takeContentChanged()) {
-                forceLoad();
-                if (dialog.isShowing()) {
-                    dialog.dismiss();
-                }
-                dialog.show();
-            }
-        }
-
-        @Nullable
-        @Override
-        public Void loadInBackground() {
-            Logger.d(TAG, "loadInBackground");
-            sharedViewModel.reloadAppRules();
-            return null;
-        }
-
-        @Override
-        public void deliverResult(@Nullable Void data) {
-            Logger.d(TAG, "deliverResult");
-            super.deliverResult(data);
-
-            if (dialog.isShowing()) {
-                dialog.dismiss();
-            }
-        }
-    }
-
-    private static final class ImportTaskLoader extends AsyncTaskLoader<Boolean> {
-
-        private final Uri uri;
-        private final ProgressDialog dialog;
-
-        public ImportTaskLoader(@NonNull Context context, Uri uri) {
-            super(context);
-            this.uri = uri;
-            dialog = new ProgressDialog(context);
-            dialog.setMessage(context.getText(R.string.dialog_message_import));
-            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            dialog.setCancelable(false);
-            dialog.setCanceledOnTouchOutside(false);
-        }
-
-        @Override
-        protected void onStartLoading() {
-            super.onStartLoading();
-            if (!dialog.isShowing()) {
-                dialog.show();
-            }
-        }
-
-        @Override
-        public Boolean loadInBackground() {
-            try (InputStream in = getContext().getContentResolver().openInputStream(uri)) {
-                File file = new File(getContext().getCacheDir(), "rules.gm");
-                try {
-                    if (FileUtils.copy(in, file)) {
-                        return RuleHelper.importRules(file.getPath());
-                    }
-                } finally {
-                    FileUtils.delete(file);
-                }
-            } catch (Exception e) {
-                Logger.e(TAG, "import rules fail", e);
-                return false;
-            }
-            return false;
-        }
-
-        @Override
-        public void deliverResult(@Nullable Boolean data) {
-            super.deliverResult(data);
-            if (dialog.isShowing()) {
-                dialog.dismiss();
-            }
-        }
-
     }
 
 }
