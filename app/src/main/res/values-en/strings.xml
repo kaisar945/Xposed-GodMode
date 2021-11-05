@@ -8,14 +8,12 @@
     <string name="snack_bar_msg_revert_rule_fail">Revoke rule failed</string>
     <string name="pref_title_donate_me">Donate</string>
     <string name="pref_title_add_group">Join community</string>
-    <string name="pref_title_quick_setting">Enable notification</string>
-    <string name="pref_description_quick_setting">Support Android7.0+ Tiles</string>
     <string name="pref_description_donate_me">That great</string>
     <string name="menu_export">Export</string>
     <string name="dialog_btn_alipay">Alipay</string>
     <string name="dialog_btn_wxpay">WechatPay</string>
     <string name="menu_revert">Revoke</string>
-    <string name="go_setting">Set</string>
+    <string name="active">ACTIVE</string>
     <string name="not_active_module">GodMode module is not activated</string>
     <string name="hey_guy">Hey guy</string>
     <string name="pref_description_god_mode">Start editor</string>
@@ -27,7 +25,6 @@
     <string name="not_found_xp_installer">Not found Xposed Manager</string>
     <string name="enter_edit">Exit editor</string>
     <string name="exit_edit">Start editor</string>
-    <string name="close">Close</string>
     <string name="manage">Manager</string>
     <string name="import_failed">Import failed</string>
     <string name="import_success">Import success</string>

@@ -7,12 +7,6 @@
                 android:key="editor_switch"
                 android:summary="@string/pref_description_god_mode"
                 android:title="@string/pref_title_god_mode" />
-        <CheckBoxPreference
-                android:defaultValue="false"
-                android:icon="@drawable/ic_setting"
-                android:key="quick_setting"
-                android:summary="@string/pref_description_quick_setting"
-                android:title="@string/pref_title_quick_setting" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/pref_header_support">

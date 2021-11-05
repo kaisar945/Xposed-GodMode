@@ -8,9 +8,6 @@
     <string name="pref_title_god_mode">上帝模式</string>
     <string name="pref_description_god_mode">伙计们可别玩脱了</string>
 
-    <string name="pref_title_quick_setting">启用通知栏快捷设置</string>
-    <string name="pref_description_quick_setting">Android7.0+支持磁贴</string>
-
     <string name="pref_title_donate_me">支持我的老伙计</string>
     <string name="pref_description_donate_me">太感谢你了我的伙计</string>
 
@@ -26,7 +23,6 @@
     <string name="donate_thanks">看看 我的伙计是多么的慷慨 感谢你的支持!</string>
     <string name="enter_edit">退出编辑</string>
     <string name="exit_edit">开始编辑</string>
-    <string name="close">关闭</string>
     <string name="manage">管理</string>
     <string name="xposed_description">神说要有人，于是就有了伙计们。</string>
 
@@ -55,7 +51,7 @@
 
     <string name="hey_guy">嘿 伙计</string>
     <string name="not_active_module">上帝模式还没有激活，呃… 我是说也许你应该到管理器中重新激活一下</string>
-    <string name="go_setting">去设置</string>
+    <string name="active">激活</string>
     <string name="not_found_xp_installer">噢！ 我的伙计 没有在系统里发现XposedInstaller</string>
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 

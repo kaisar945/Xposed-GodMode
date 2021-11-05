@@ -48,7 +48,7 @@
         </service>
 
         <service
-                android:name=".QuickSettingsCompatService"
+                android:name=".NotificationService"
                 android:icon="@drawable/ic_angel_normal"
                 android:label="@string/app_name" />
 

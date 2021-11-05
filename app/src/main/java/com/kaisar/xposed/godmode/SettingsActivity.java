@@ -1,6 +1,7 @@
 package com.kaisar.xposed.godmode;
 
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,6 +18,7 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.fragment_container_activity);
         SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
         sharedViewModel.title.observe(this, this::setTitle);
+        startNotificationService();
     }
 
     public void startPreferenceFragment(Fragment fragment) {
@@ -26,5 +28,12 @@ public class SettingsActivity extends AppCompatActivity {
                 .addToBackStack(fragment.getClass().getSimpleName())
                 .commit();
     }
+
+
+    private void startNotificationService() {
+        Intent notificationService = new Intent(this, NotificationService.class);
+        startService(notificationService);
+    }
+
 
 }

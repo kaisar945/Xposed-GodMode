@@ -9,7 +9,6 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.TextUtils;
@@ -25,7 +24,6 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.preference.CheckBoxPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
@@ -33,7 +31,6 @@ import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
 import com.kaisar.xposed.godmode.BuildConfig;
-import com.kaisar.xposed.godmode.QuickSettingsCompatService;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
@@ -60,20 +57,19 @@ import retrofit2.Response;
  */
 
 public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements
-        Preference.OnPreferenceChangeListener, Preference.OnPreferenceClickListener,
+        Preference.OnPreferenceClickListener,
+        Preference.OnPreferenceChangeListener,
         SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String SETTING_PREFS = "settings";
     private static final String KEY_VERSION_CODE = "version_code";
 
     public static final String KEY_EDITOR_SWITCH = "editor_switch";
-    public static final String KEY_QUICK_SETTING = "quick_setting";
     public static final String KEY_JOIN_GROUP = "join_group";
     public static final String KEY_DONATE = "donate";
     public static final String KEY_APP_RULES = "app_rules";
 
     private SwitchPreferenceCompat mEditorSwitchPreference;
-    private CheckBoxPreference mQuickSettingPreference;
     private Preference mJoinGroupPreference;
     private Preference mDonatePreference;
 
@@ -163,9 +159,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         addPreferencesFromResource(R.xml.pref_general);
         mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(KEY_EDITOR_SWITCH);
         mEditorSwitchPreference.setChecked(GodModeManager.getDefault().isInEditMode());
+        mEditorSwitchPreference.setOnPreferenceClickListener(this);
         mEditorSwitchPreference.setOnPreferenceChangeListener(this);
-        mQuickSettingPreference = (CheckBoxPreference) findPreference(KEY_QUICK_SETTING);
-        mQuickSettingPreference.setOnPreferenceChangeListener(this);
         mJoinGroupPreference = findPreference(KEY_JOIN_GROUP);
         mJoinGroupPreference.setOnPreferenceClickListener(this);
         mDonatePreference = findPreference(KEY_DONATE);
@@ -196,28 +191,18 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        if (mEditorSwitchPreference == preference) {
-            boolean enable = (boolean) newValue;
-            GodModeManager.getDefault().setEditMode(enable);
-        } else if (mQuickSettingPreference == preference) {
-            boolean enable = (boolean) newValue;
-            Intent intent = new Intent(preference.getContext(), QuickSettingsCompatService.class);
-            if (enable) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    requireContext().startForegroundService(intent);
-                } else {
-                    requireContext().startService(intent);
-                }
-            } else {
-                requireContext().stopService(intent);
-            }
-        }
-        return true;
+        return XposedEnvironment.isModuleActive(requireContext());
     }
 
     @Override
     public boolean onPreferenceClick(Preference preference) {
-        if (mJoinGroupPreference == preference) {
+        if (mEditorSwitchPreference == preference) {
+            if (!XposedEnvironment.isModuleActive(requireContext())) {
+                Toast.makeText(requireContext(), R.string.not_active_module, Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            GodModeManager.getDefault().setEditMode(mEditorSwitchPreference.isChecked());
+        } else if (mJoinGroupPreference == preference) {
             showGroupInfoDialog();
         } else if (mDonatePreference == preference) {
             DonateHelper.showDonateDialog(requireContext());
@@ -238,8 +223,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
         if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
             mEditorSwitchPreference.setChecked(sp.getBoolean(key, false));
-        } else if (TextUtils.equals(key, KEY_QUICK_SETTING)) {
-            mQuickSettingPreference.setChecked(sp.getBoolean(key, false));
         }
     }
 
@@ -286,8 +269,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.hey_guy)
                 .setMessage(R.string.not_active_module)
-                .setPositiveButton(android.R.string.ok, null)
-                .setNegativeButton(R.string.go_setting, (dialog, which) -> {
+                .setPositiveButton(R.string.active, (dialog, which) -> {
                     XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
                     if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
                         Intent launchIntent = requireContext().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
