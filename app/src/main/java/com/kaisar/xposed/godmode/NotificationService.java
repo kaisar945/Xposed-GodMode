@@ -1,5 +1,7 @@
 package com.kaisar.xposed.godmode;
 
+import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment.KEY_EDITOR_SWITCH;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -24,7 +26,7 @@ import com.kaisar.xposed.godmode.util.XposedEnvironment;
  * Created by jrsen on 17-10-26.
  */
 
-public final class NotificationService extends Service {
+public final class NotificationService extends Service implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String TAG = "NotificationService";
 
@@ -32,6 +34,7 @@ public final class NotificationService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
     }
 
     @Override
@@ -45,14 +48,7 @@ public final class NotificationService extends Service {
             enable = !enable;
             setEditModeEnable(enable);
         }
-
-        if (enable) {
-            startForeground(1, buildNotification(true));
-        } else {
-            stopForeground(false);
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-            notificationManager.notify(1, buildNotification(false));
-        }
+        postNotification(enable);
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -62,6 +58,16 @@ public final class NotificationService extends Service {
             channel.setDescription("Control by God");
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(channel);
+        }
+    }
+
+    private void postNotification(boolean editMode) {
+        if (editMode) {
+            startForeground(1, buildNotification(true));
+        } else {
+            stopForeground(false);
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+            notificationManager.notify(1, buildNotification(false));
         }
     }
 
@@ -90,6 +96,11 @@ public final class NotificationService extends Service {
         return null;
     }
 
+    @Override
+    public void onDestroy() {
+        PreferenceManager.getDefaultSharedPreferences(this).unregisterOnSharedPreferenceChangeListener(this);
+    }
+
     private void setEditModeEnable(boolean enable) {
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
         sp.edit().putBoolean("editor_switch", enable).apply();
@@ -101,4 +112,10 @@ public final class NotificationService extends Service {
         return sp.getBoolean("editor_switch", false);
     }
 
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
+            postNotification(sharedPreferences.getBoolean(key, false));
+        }
+    }
 }
