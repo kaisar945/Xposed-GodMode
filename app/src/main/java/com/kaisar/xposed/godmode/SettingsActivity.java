@@ -2,8 +2,10 @@ package com.kaisar.xposed.godmode;
 
 
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -35,5 +37,20 @@ public class SettingsActivity extends AppCompatActivity {
         startService(notificationService);
     }
 
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+//        int currentNightMode = newConfig.uiMode & Configuration.UI_MODE_NIGHT_MASK;
+//        switch (currentNightMode) {
+//            case Configuration.UI_MODE_NIGHT_NO:
+//                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+//                break;
+//            case Configuration.UI_MODE_NIGHT_YES:
+//                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+//                break;
+//            default:
+//                break;
+//        }
 
+    }
 }

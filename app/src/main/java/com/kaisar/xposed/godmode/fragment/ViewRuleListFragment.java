@@ -160,7 +160,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
             SpannableStringBuilder summaryBuilder = new SpannableStringBuilder();
             if (!TextUtils.isEmpty(viewRule.alias)) {
                 SpannableString ss = new SpannableString(getString(R.string.field_rule_alias, viewRule.alias));
-                ss.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.alias)), 0, ss.length(), 0);
+                ss.setSpan(new ForegroundColorSpan(getResources().getColor(R.color.prefsAliasColor)), 0, ss.length(), 0);
                 summaryBuilder.append(ss);
             }
             summaryBuilder.append(getString(R.string.field_view, viewRule.viewClass));
