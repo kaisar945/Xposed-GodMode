@@ -77,8 +77,9 @@
     <string name="rule_details_set_alias">设置别名</string>
 
     <string name="top_revert_tip">噢 上帝，原谅这只愚蠢的土拨鼠吧！</string>
-
+    <string name="accessibility_block">屏蔽</string>
+    <string name="block_fail">屏蔽失败:%1$s</string>
     <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
     <string name="unknown_activity">未知界面</string>
-
+    <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
 </resources>

@@ -29,7 +29,6 @@ import com.kaisar.xposed.godmode.util.XposedEnvironment;
 public final class NotificationService extends Service implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String TAG = "NotificationService";
-
     @Override
     public void onCreate() {
         super.onCreate();

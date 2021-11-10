@@ -1,6 +1,7 @@
 package com.kaisar.xposed.godmode.injection;
 
 import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -8,18 +9,23 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Point;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.Display;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
 import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
+import com.kaisar.xposed.godmode.injection.hook.DispatchKeyEventHook;
 import com.kaisar.xposed.godmode.injection.hook.DisplayPropertiesHook;
 import com.kaisar.xposed.godmode.injection.hook.EventHandlerHook;
 import com.kaisar.xposed.godmode.injection.hook.SystemPropertiesHook;
@@ -38,10 +44,9 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import de.robv.android.xposed.callbacks.XCallback;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-
-
 /**
  * Created by jrsen on 17-10-13.
  */
@@ -52,7 +57,9 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
     public final static Property<ActRules> actRuleProp = new Property<>();
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
     private static State state = State.UNKNOWN;
-
+    public static Activity activity = null;
+    public static Context context = null;
+    private static DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
     enum State {
         UNKNOWN,
         ALLOWED,
@@ -66,6 +73,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         if (state == State.ALLOWED) {
             switchProp.set(enable);
         }
+        dispatchKeyEventHook.setdisplay(enable);
     }
 
     public static void notifyViewRulesChanged(ActRules actRules) {
@@ -94,6 +102,16 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
                 XposedHelpers.findAndHookMethod(XposedEnvironment.class.getName(), loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
                 return;
             default://Run in other application processes
+                XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class, new XC_MethodHook() {
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                        activity = (Activity) param.thisObject;
+                        //Volume key select old
+                        dispatchKeyEventHook.setactivity(activity);
+                        super.afterHookedMethod(param);
+                    }
+                });
+
                 registerHook();
                 GodModeManager gmManager = GodModeManager.getDefault();
                 gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
@@ -191,7 +209,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         EventHandlerHook eventHandlerHook = new EventHandlerHook();
         switchProp.addOnPropertyChangeListener(eventHandlerHook);
         //Volume key select
-        XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, eventHandlerHook);
+        //XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, eventHandlerHook);
         //Drag view support
         XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, eventHandlerHook);
     }
