@@ -57,8 +57,6 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
     public final static Property<ActRules> actRuleProp = new Property<>();
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
     private static State state = State.UNKNOWN;
-    public static Activity activity = null;
-    public static Context context = null;
     private static DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
     enum State {
         UNKNOWN,
@@ -105,13 +103,11 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
                 XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class, new XC_MethodHook() {
                     @Override
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        activity = (Activity) param.thisObject;
                         //Volume key select old
-                        dispatchKeyEventHook.setactivity(activity);
+                        dispatchKeyEventHook.setactivity((Activity) param.thisObject);
                         super.afterHookedMethod(param);
                     }
                 });
-
                 registerHook();
                 GodModeManager gmManager = GodModeManager.getDefault();
                 gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
