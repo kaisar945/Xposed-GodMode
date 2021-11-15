@@ -1,5 +1,8 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
@@ -48,9 +51,6 @@ import com.kaisar.xposed.godmode.util.Preconditions;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.List;
-
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -143,7 +143,7 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
         }
 
         @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, final int position) {
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
             ViewRule viewRule = viewRules.get(position);
 
@@ -169,17 +169,14 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
             setEnabledStateOnViews(holder.itemView, true);
             holder.itemView.setFocusable(true);
             holder.itemView.setClickable(true);
-            holder.itemView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    ViewRuleDetailsContainerFragment fragment = new ViewRuleDetailsContainerFragment();
-                    fragment.setCurIndex(position);
-                    fragment.setIcon(mIcon);
-                    fragment.setLabel(mLabel);
-                    fragment.setPackageName(mPackageName);
-                    SettingsActivity activity = (SettingsActivity) requireActivity();
-                    activity.startPreferenceFragment(fragment);
-                }
+            holder.itemView.setOnClickListener(v -> {
+                ViewRuleDetailsContainerFragment fragment = new ViewRuleDetailsContainerFragment();
+                fragment.setCurIndex(position);
+                fragment.setIcon(mIcon);
+                fragment.setLabel(mLabel);
+                fragment.setPackageName(mPackageName);
+                SettingsActivity activity = (SettingsActivity) requireActivity();
+                activity.startPreferenceFragment(fragment);
             });
         }
 
