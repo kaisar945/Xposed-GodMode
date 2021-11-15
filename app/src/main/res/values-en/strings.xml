@@ -67,4 +67,5 @@
     <string name="block_fail">Failed to block:%1$s</string>
     <string name="dialog_message_query_community">Loading community info...</string>
     <string name="unknown_activity">Unknown</string>
+    <string name="accessibility_block">Block</string>
 </resources>
