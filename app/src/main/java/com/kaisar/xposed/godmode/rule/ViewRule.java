@@ -1,7 +1,6 @@
 package com.kaisar.xposed.godmode.rule;
 
 import android.content.res.Resources;
-import android.graphics.Bitmap;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
@@ -19,11 +18,6 @@ import java.util.Arrays;
  */
 @Keep
 public final class ViewRule implements Parcelable, Cloneable {
-
-    //控件界面快照
-    public transient Bitmap snapshot;
-    //控件缩略图
-    public transient Bitmap thumbnail;
 
     //生成规则的应用名称
     @SerializedName("label")
@@ -189,8 +183,6 @@ public final class ViewRule implements Parcelable, Cloneable {
                 description,
                 visibility,
                 timestamp);
-        viewRule.snapshot = snapshot;
-        viewRule.thumbnail = thumbnail;
         return viewRule;
     }
 
@@ -231,9 +223,7 @@ public final class ViewRule implements Parcelable, Cloneable {
     @Override
     public String toString() {
         final StringBuffer sb = new StringBuffer("ViewRule{");
-        sb.append("snapshot=").append(snapshot);
-        sb.append(", thumbnail=").append(thumbnail);
-        sb.append(", label='").append(label).append('\'');
+        sb.append("label='").append(label).append('\'');
         sb.append(", packageName='").append(packageName).append('\'');
         sb.append(", matchVersionName='").append(matchVersionName).append('\'');
         sb.append(", matchVersionCode=").append(matchVersionCode);

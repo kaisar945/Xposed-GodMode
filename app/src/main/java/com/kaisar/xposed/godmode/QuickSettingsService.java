@@ -9,7 +9,6 @@ import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
 import android.text.TextUtils;
 
-import com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 
 /**
@@ -69,7 +68,7 @@ public final class QuickSettingsService extends TileService implements SharedPre
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (TextUtils.equals(GeneralPreferenceFragment.KEY_EDITOR_SWITCH, key)) {
+        if (TextUtils.equals(getString(R.string.pref_key_editor), key)) {
             updateTile();
         }
     }

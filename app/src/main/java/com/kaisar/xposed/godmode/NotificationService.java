@@ -1,7 +1,5 @@
 package com.kaisar.xposed.godmode;
 
-import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment.KEY_EDITOR_SWITCH;
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -113,7 +111,7 @@ public final class NotificationService extends Service implements SharedPreferen
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
+        if (TextUtils.equals(key, getString(R.string.pref_key_editor))) {
             postNotification(sharedPreferences.getBoolean(key, false));
         }
     }

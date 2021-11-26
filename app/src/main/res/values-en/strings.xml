@@ -20,7 +20,6 @@
     <string name="pref_description_add_group">Have fun</string>
     <string name="thanks">Thank you guys</string>
     <string name="tips_qrcord">The QR code image has been placed in your gallery</string>
-    <string name="dialog_loading">Loading…</string>
     <string name="welcome_title">Hey guys, Welcome</string>
     <string name="not_found_xp_installer">Not found Xposed Manager</string>
     <string name="enter_edit">Exit editor</string>
@@ -28,7 +27,6 @@
     <string name="manage">Manager</string>
     <string name="import_failed">Import failed</string>
     <string name="import_success">Import success</string>
-    <string name="dialog_message_import">Importing…</string>
     <string name="export_failed">Export failed</string>
     <string name="menu_title_purge_all_rules">Revoke all rule</string>
     <string name="menu_export_all_rules">Export all rule</string>
@@ -41,7 +39,6 @@
     <string name="donate_thanks">Thanks for supporting my work</string>
     <string name="xposed_description">Like God, Remove any elements on the interface that you don’t like</string>
     <string name="export_successful">Export success %1$s</string>
-    <string name="dialog_message_export">Exporting rules…</string>
     <string name="menu_title_import_view_rule_description">"Select import rule image "</string>
     <string name="field_activity">Activity:%1$s</string>
     <string name="field_view">View:%1$s</string>
@@ -66,6 +63,5 @@
     <string name="top_revert_tip">Move here to cancel</string>
     <string name="block_fail">Failed to block:%1$s</string>
     <string name="dialog_message_query_community">Loading community info...</string>
-    <string name="unknown_activity">Unknown</string>
     <string name="accessibility_block">Block</string>
 </resources>

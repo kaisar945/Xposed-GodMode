@@ -35,6 +35,7 @@ import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
+import com.kaisar.xposed.godmode.preference.ProgressPreference;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.util.Clipboard;
@@ -57,23 +58,16 @@ import retrofit2.Response;
  */
 
 public final class GeneralPreferenceFragment extends PreferenceFragmentCompat implements
-        Preference.OnPreferenceClickListener,
-        Preference.OnPreferenceChangeListener,
+        Preference.OnPreferenceClickListener, Preference.OnPreferenceChangeListener,
         SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String SETTING_PREFS = "settings";
     private static final String KEY_VERSION_CODE = "version_code";
 
-    public static final String KEY_EDITOR_SWITCH = "editor_switch";
-    public static final String KEY_JOIN_GROUP = "join_group";
-    public static final String KEY_DONATE = "donate";
-    public static final String KEY_APP_RULES = "app_rules";
-
+    private ProgressPreference mProgressPreference;
     private SwitchPreferenceCompat mEditorSwitchPreference;
     private Preference mJoinGroupPreference;
     private Preference mDonatePreference;
-
-    private ProgressDialog mLoadingDialog;
 
     private ActivityResultLauncher<String> mFileLauncher;
     private SharedViewModel mSharedViewModel;
@@ -82,52 +76,36 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        mLoadingDialog = new ProgressDialog(requireContext());
-        mLoadingDialog.setMessage(getText(R.string.dialog_loading));
-        mLoadingDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        mLoadingDialog.setCancelable(false);
-        mLoadingDialog.setCanceledOnTouchOutside(false);
-
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
         mSharedViewModel.crash.observe(this, this::showCrashDialog);
-        mSharedViewModel.detectCrash();
         mSharedViewModel.appRules.observe(this, this::updatePreference);
-        mLoadingDialog.show();
+        mSharedViewModel.detectCrash();
         mSharedViewModel.loadAppRules();
         mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
     }
 
     private void onActivityResult(Uri uri) {
         if (uri == null) return;
-        ProgressDialog dialog = new ProgressDialog(requireContext());
-        dialog.setMessage(getText(R.string.dialog_message_import));
-        dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        dialog.setCancelable(false);
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
+        mProgressPreference.setVisible(true);
         mSharedViewModel.importExternalRules(requireContext(), uri, new SharedViewModel.ImportCallback() {
             @Override
             public void onSuccess() {
-                dialog.dismiss();
                 Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
             }
 
             @Override
             public void onFailure(Throwable t) {
-                dialog.dismiss();
                 Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
             }
         });
     }
 
     private void updatePreference(AppRules appRules) {
-        if (mLoadingDialog.isShowing()) {
-            mLoadingDialog.dismiss();
-        }
+        mProgressPreference.setVisible(false);
         if (appRules != null) {
             Set<Map.Entry<String, ActRules>> entries = appRules.entrySet();
-            PreferenceCategory category = (PreferenceCategory) findPreference(KEY_APP_RULES);
+            PreferenceCategory category = (PreferenceCategory) findPreference(getString(R.string.pref_key_app_rules));
             category.removeAll();
             PackageManager pm = requireContext().getPackageManager();
             for (Map.Entry<String, ActRules> entry : entries) {
@@ -147,23 +125,23 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 preference.setTitle(label);
                 preference.setSummary(packageName);
                 preference.setKey(packageName);
-                preference.setOnPreferenceClickListener(GeneralPreferenceFragment.this);
+                preference.setOnPreferenceClickListener(this);
                 category.addPreference(preference);
             }
         }
     }
 
-
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        addPreferencesFromResource(R.xml.pref_general);
-        mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(KEY_EDITOR_SWITCH);
+        setPreferencesFromResource(R.xml.pref_general, rootKey);
+        mProgressPreference = (ProgressPreference) findPreference(getString(R.string.pref_key_progress_indicator));
+        mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(getString(R.string.pref_key_editor));
         mEditorSwitchPreference.setChecked(GodModeManager.getDefault().isInEditMode());
         mEditorSwitchPreference.setOnPreferenceClickListener(this);
         mEditorSwitchPreference.setOnPreferenceChangeListener(this);
-        mJoinGroupPreference = findPreference(KEY_JOIN_GROUP);
+        mJoinGroupPreference = findPreference(getString(R.string.pref_key_join_group));
         mJoinGroupPreference.setOnPreferenceClickListener(this);
-        mDonatePreference = findPreference(KEY_DONATE);
+        mDonatePreference = findPreference(getString(R.string.pref_key_donate));
         mDonatePreference.setOnPreferenceClickListener(this);
 
         SharedPreferences sp = requireContext().getSharedPreferences(SETTING_PREFS, Context.MODE_PRIVATE);
@@ -171,6 +149,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         if (previousVersionCode != BuildConfig.VERSION_CODE) {
             sp.edit().putInt(KEY_VERSION_CODE, BuildConfig.VERSION_CODE).apply();
             showUpdatePolicyDialog();
+
         } else if (!XposedEnvironment.isModuleActive(getContext())) {
             showEnableModuleDialog();
         }
@@ -221,7 +200,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
-        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
+        if (TextUtils.equals(key, getString(R.string.pref_key_editor))) {
             mEditorSwitchPreference.setChecked(sp.getBoolean(key, false));
         }
     }

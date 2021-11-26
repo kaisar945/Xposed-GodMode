@@ -1,6 +1,12 @@
 <resources>
     <string name="app_name">上帝模式</string>
 
+    <string name="pref_key_progress_indicator" translatable="false">progress_indicator</string>
+    <string name="pref_key_editor" translatable="false">editor_switch</string>
+    <string name="pref_key_join_group" translatable="false">join_group</string>
+    <string name="pref_key_donate" translatable="false">donate</string>
+    <string name="pref_key_app_rules" translatable="false">app_rules</string>
+
     <string name="pref_header_general">通用</string>
     <string name="pref_header_support">支持</string>
     <string name="pref_header_app_rules">应用规则</string>
@@ -26,7 +32,7 @@
     <string name="manage">管理</string>
     <string name="xposed_description">神说要有人，于是就有了伙计们。</string>
 
-    <string name="menu_title_purge_all_rules">恢复所有规则</string>
+    <string name="menu_title_purge_all_rules">删除所有规则</string>
     <string name="menu_export_all_rules">导出所有规则</string>
     <string name="menu_title_import_view_rule">导入规则</string>
     <string name="menu_title_import_view_rule_description">从相册选择一个图片规则导入</string>
@@ -41,11 +47,9 @@
     <string name="field_activity">依附界面:%1$s</string>
     <string name="field_view">控件类型:%1$s</string>
 
-    <string name="dialog_message_export">嘿 伙计! 别着急看起来就快成功了</string>
     <string name="export_successful">导出成功,文件路径:%1$s</string>
     <string name="export_failed">导出失败</string>
 
-    <string name="dialog_message_import">@string/dialog_message_export</string>
     <string name="import_success">导入规则成功</string>
     <string name="import_failed">导入规则失败</string>
 
@@ -55,8 +59,7 @@
     <string name="not_found_xp_installer">噢！ 我的伙计 没有在系统里发现XposedInstaller</string>
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 
-    <string name="dialog_loading">噢! 伙计 让我来看看这里有些什么</string>
-    <string name="snack_bar_msg_revert_rule_fail">恢复规则失败</string>
+    <string name="snack_bar_msg_revert_rule_fail">删除规则失败</string>
     <string name="dialog_btn_copy">复制给我的老伙计</string>
     <string name="crash_tip">    我想你应该遇了些麻烦 天知道这该死的程序都干了些什么 我想你应该把下面这些奇奇怪怪的日志复制给老伙计 也许有用吧 是的 我是说也许 谁知道呢\n\n</string>
     <string name="wechat_donate_tips">伙计 二维码已经放到相册了 点击+号扫一扫从相册选取</string>
@@ -80,6 +83,6 @@
     <string name="accessibility_block">屏蔽</string>
     <string name="block_fail">屏蔽失败:%1$s</string>
     <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
-    <string name="unknown_activity">未知界面</string>
     <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
+
 </resources>
