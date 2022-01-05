@@ -27,10 +27,11 @@ import com.kaisar.xposed.godmode.util.XposedEnvironment;
 public final class NotificationService extends Service implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String TAG = "NotificationService";
+
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
+        createControlChannel();
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
     }
 
@@ -49,10 +50,10 @@ public final class NotificationService extends Service implements SharedPreferen
         return super.onStartCommand(intent, flags, startId);
     }
 
-    private void createNotificationChannel() {
+    private void createControlChannel() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(TAG, "Control", NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Control by God");
+            NotificationChannel channel = new NotificationChannel(TAG, "Control panel", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Let there be light");
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(channel);
         }

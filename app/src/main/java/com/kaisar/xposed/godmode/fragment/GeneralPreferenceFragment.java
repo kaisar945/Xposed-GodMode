@@ -31,6 +31,8 @@ import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
 import com.kaisar.xposed.godmode.BuildConfig;
+import com.kaisar.xposed.godmode.CrashHandler;
+import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
@@ -78,11 +80,28 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.crash.observe(this, this::showCrashDialog);
         mSharedViewModel.appRules.observe(this, this::updatePreference);
-        mSharedViewModel.detectCrash();
-        mSharedViewModel.loadAppRules();
         mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
+        if (!checkCrash()) {
+            mSharedViewModel.loadAppRules();
+        }
+    }
+
+    private boolean checkCrash() {
+        String crashInfo = CrashHandler.getLastCrashInfo(GodModeApplication.getApplication());
+        if (crashInfo != null) {
+            SpannableString text = new SpannableString(getString(R.string.crash_tip));
+            SpannableString st = new SpannableString(crashInfo);
+            st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
+            CharSequence message = TextUtils.concat(text, st);
+            new AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.hey_guy)
+                    .setMessage(message)
+                    .setPositiveButton(R.string.dialog_btn_copy, (dialog, which) -> Clipboard.putContent(requireContext(), crashInfo))
+                    .show();
+            return true;
+        }
+        return false;
     }
 
     private void onActivityResult(Uri uri) {
@@ -228,20 +247,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
             item.setTitle(hidden ? R.string.menu_icon_switch_show : R.string.menu_icon_switch_hide);
         }
         return true;
-    }
-
-    private void showCrashDialog(final String stackTrace) {
-        SpannableString text = new SpannableString(getString(R.string.crash_tip));
-        SpannableString st = new SpannableString(stackTrace);
-        st.setSpan(new RelativeSizeSpan(0.7f), 0, st.length(), 0);
-        CharSequence message = TextUtils.concat(text, st);
-        new AlertDialog.Builder(requireContext())
-                .setTitle(R.string.hey_guy)
-                .setMessage(message)
-                .setPositiveButton(R.string.dialog_btn_copy, (dialog, which) -> {
-                    Clipboard.putContent(requireContext(), stackTrace);
-                })
-                .show();
     }
 
     private void showEnableModuleDialog() {

@@ -1,5 +1,8 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -29,19 +32,17 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.preference.ImageViewPreference;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
-
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
+import java.util.Objects;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -250,7 +251,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @NonNull
     @Override
     public Loader<Bitmap> onCreateLoader(int id, @Nullable Bundle args) {
-        return new ImageLoader(requireContext(), mViewRule);
+        return new RuleImageLoader(requireContext(), mViewRule);
     }
 
     @Override
@@ -268,43 +269,35 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     public void onLoaderReset(@NonNull Loader<Bitmap> loader) {
     }
 
-    static final class ImageLoader extends AsyncTaskLoader<Bitmap> {
+    static final class RuleImageLoader extends AsyncTaskLoader<Bitmap> {
 
-        final ViewRule viewRule;
+        private final ViewRule mViewRule;
 
-        public ImageLoader(@NonNull Context context, ViewRule viewRule) {
+        public RuleImageLoader(@NonNull Context context, ViewRule viewRule) {
             super(context);
-            this.viewRule = viewRule;
+            this.mViewRule = viewRule;
         }
 
         @Nullable
         @Override
         public Bitmap loadInBackground() {
-            Bitmap snapshot = viewRule.snapshot;
-            if (snapshot == null && !TextUtils.isEmpty(viewRule.imagePath)) {
-                ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openImageFileDescriptor(viewRule.imagePath);
-                if (parcelFileDescriptor != null) {
-                    try {
-                        try {
-                            snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
-                        } finally {
-                            parcelFileDescriptor.close();
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+
+            try {
+                try (ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openImageFileDescriptor(mViewRule.imagePath)) {
+                    Objects.requireNonNull(parcelFileDescriptor, String.format("Can not open %s", mViewRule.imagePath));
+                    Bitmap bitmap = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
+                    Bitmap newBitmap = bitmap.copy(bitmap.getConfig(), true);
+                    Paint markPaint = new Paint();
+                    markPaint.setColor(Color.RED);
+                    markPaint.setAlpha(100);
+                    Canvas canvas = new Canvas(newBitmap);
+                    canvas.drawRect(mViewRule.x, mViewRule.y, mViewRule.x + mViewRule.width, mViewRule.y + mViewRule.height, markPaint);
+                    return newBitmap;
                 }
+            } catch (Exception e) {
+                Logger.w(TAG, e.getMessage());
+                return null;
             }
-            if (snapshot != null) {
-                Bitmap copySnapshot = snapshot.copy(snapshot.getConfig(), true);
-                Paint markPaint = new Paint();
-                markPaint.setColor(Color.RED);
-                markPaint.setAlpha(100);
-                Canvas canvas = new Canvas(copySnapshot);
-                canvas.drawRect(viewRule.x, viewRule.y, viewRule.x + viewRule.width, viewRule.y + viewRule.height, markPaint);
-                return copySnapshot;
-            }
-            return null;
         }
     }
 }

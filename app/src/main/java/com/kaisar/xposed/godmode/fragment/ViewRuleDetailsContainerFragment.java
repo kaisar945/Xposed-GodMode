@@ -1,8 +1,11 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+
 import android.Manifest;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -27,9 +30,11 @@ import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
-
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+import java.util.Locale;
 
 public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCompat {
 
@@ -71,7 +76,6 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
     private final OnPageChangeCallback mCallback = new OnPageChangeCallback() {
         @Override
         public void onPageSelected(int position) {
-            Logger.d(TAG, "new position" + position);
             mCurIndex = position;
         }
     };
@@ -98,20 +102,20 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         if (item.getItemId() == R.id.menu_revert) {
             mSharedViewModel.deleteRule(viewRule);
             requireActivity().onBackPressed();
-        } else if (item.getItemId() == R.id.menu_export) {
-            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
-            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-                return true;
-            }
-            try {
-                String filepath = LocalRepository.exportRules(viewRule);
-                Snackbar.make(requireActivity(), getString(R.string.export_successful, filepath), Snackbar.LENGTH_LONG).show();
-            } catch (Exception e) {
-                Logger.e(TAG, "export single rule fail", e);
-                Snackbar.make(requireActivity(), R.string.export_failed, Snackbar.LENGTH_LONG).show();
-            }
         }
+//        else if (item.getItemId() == R.id.menu_export) {
+//            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
+//            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+//                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+//                return true;
+//            }
+//            File externalStoragePublicDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+//            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
+//            String date = simpleDateFormat.format(new Date());
+//            File file = new File(externalStoragePublicDirectory, String.format("GodMode-Rules-%s.gzip", date));
+//            boolean ok = LocalRepository.exportRules(file.getPath(), viewRules);
+//            Snackbar.make(requireActivity(), ok ? getString(R.string.export_successful, file.getPath()) : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
+//        }
         return true;
     }
 

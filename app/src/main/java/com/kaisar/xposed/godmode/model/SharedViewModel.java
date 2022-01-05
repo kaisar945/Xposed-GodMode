@@ -39,7 +39,6 @@ public class SharedViewModel extends ViewModel {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     public final MutableLiveData<Integer> title = new MutableLiveData<>();
-    public final MutableLiveData<String> crash = new MutableLiveData<>();
     public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
     public final MutableLiveData<String> selectedPackage = new MutableLiveData<>();
     public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
@@ -58,13 +57,6 @@ public class SharedViewModel extends ViewModel {
                 }
             }
         });
-    }
-
-    public void detectCrash() {
-        String crashMessage = CrashHandler.detectCrash(GodModeApplication.getApplication());
-        if (crashMessage != null) {
-            crash.setValue(crashMessage);
-        }
     }
 
     public void loadAppRules() {
