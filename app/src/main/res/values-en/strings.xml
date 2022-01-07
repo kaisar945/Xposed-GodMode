@@ -57,7 +57,7 @@
     <string name="rule_details_invisible">Invisible</string>
     <string name="rule_details_gone">Gone</string>
     <string name="rule_details_set_alias">Set alias</string>
-    <string name="rule_details_field_visibility">Visibility</string>
+    <string name="rule_details_field_visible">Visibility</string>
     <string name="update_tips">I think you can try to block some annoying buttons in God mode. Oh! Yes, it sounds interesting. But this little guy is sometimes as disobedient as the damn stubborn donkey at Tom\'s, don\'t worry guys, I will fix it as soon as possible!</string>
     <string name="crash_tip">Crash detected\n</string>
     <string name="top_revert_tip">Move here to cancel</string>

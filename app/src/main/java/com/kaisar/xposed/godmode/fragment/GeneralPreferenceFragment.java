@@ -80,7 +80,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.appRules.observe(this, this::updatePreference);
+        mSharedViewModel.mAppRules.observe(this, this::onAppRuleChange);
         mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
         if (!checkCrash()) {
             mSharedViewModel.loadAppRules();
@@ -120,33 +120,32 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         });
     }
 
-    private void updatePreference(AppRules appRules) {
+    private void onAppRuleChange(AppRules appRules) {
         mProgressPreference.setVisible(false);
-        if (appRules != null) {
-            Set<Map.Entry<String, ActRules>> entries = appRules.entrySet();
-            PreferenceCategory category = (PreferenceCategory) findPreference(getString(R.string.pref_key_app_rules));
-            category.removeAll();
-            PackageManager pm = requireContext().getPackageManager();
-            for (Map.Entry<String, ActRules> entry : entries) {
-                String packageName = entry.getKey();
-                Drawable icon;
-                CharSequence label;
-                try {
-                    ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
-                    icon = aInfo.loadIcon(pm);
-                    label = aInfo.loadLabel(pm);
-                } catch (PackageManager.NameNotFoundException ignore) {
-                    icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
-                    label = packageName;
-                }
-                Preference preference = new Preference(category.getContext());
-                preference.setIcon(icon);
-                preference.setTitle(label);
-                preference.setSummary(packageName);
-                preference.setKey(packageName);
-                preference.setOnPreferenceClickListener(this);
-                category.addPreference(preference);
+        appRules = appRules != null ? appRules : new AppRules();
+        Set<Map.Entry<String, ActRules>> entries = appRules.entrySet();
+        PreferenceCategory category = (PreferenceCategory) findPreference(getString(R.string.pref_key_app_rules));
+        category.removeAll();
+        PackageManager pm = requireContext().getPackageManager();
+        for (Map.Entry<String, ActRules> entry : entries) {
+            String packageName = entry.getKey();
+            Drawable icon;
+            CharSequence label;
+            try {
+                ApplicationInfo aInfo = pm.getApplicationInfo(packageName, 0);
+                icon = aInfo.loadIcon(pm);
+                label = aInfo.loadLabel(pm);
+            } catch (PackageManager.NameNotFoundException ignore) {
+                icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+                label = packageName;
             }
+            Preference preference = new Preference(category.getContext());
+            preference.setIcon(icon);
+            preference.setTitle(label);
+            preference.setSummary(packageName);
+            preference.setKey(packageName);
+            preference.setOnPreferenceClickListener(this);
+            category.addPreference(preference);
         }
     }
 

@@ -5,4 +5,14 @@
         <item>@android:color/black</item>
         <item>@android:color/black</item>
     </integer-array>
+
+    <string-array name="visible_entries">
+        <item>@string/rule_details_invisible</item>
+        <item>@string/rule_details_gone</item>
+    </string-array>
+
+    <string-array name="visible_values">
+        <item>4</item>
+        <item>8</item>
+    </string-array>
 </resources>

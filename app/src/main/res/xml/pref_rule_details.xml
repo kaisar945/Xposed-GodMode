@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+    <Preference android:key="header" />
+
+    <Preference
+            android:icon="@mipmap/ic_god"
+            android:key="@string/pref_key_detail_rule_info"
+            android:selectable="false"
+            android:title="@string/app_name" />
+
+    <Preference
+            android:key="@string/pref_key_detail_rule_created_time"
+            android:title="@string/rule_details_field_create_time" />
+
+    <Preference
+            android:key="@string/pref_key_detail_rule_match_version"
+            android:title="@string/rule_details_field_generate_version" />
+
+    <Preference
+            android:key="@string/pref_key_detail_rule_applied_activity"
+            android:title="@string/rule_details_field_activity" />
+
+    <EditTextPreference
+            android:dialogTitle="@string/rule_details_set_alias"
+            android:key="@string/pref_key_detail_rule_alias"
+            android:persistent="false"
+            android:summary="@string/rule_details_set_alias"
+            android:title="@string/rule_details_field_alias" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_bounds"
+            android:title="@string/rule_details_field_view_bounds" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_type"
+            android:title="@string/rule_details_field_view_type" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_depth"
+            android:title="@string/rule_details_field_view_depth" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_res_name"
+            android:title="@string/rule_details_field_res_name" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_text"
+            android:title="@string/rule_details_field_text"
+            app:isPreferenceVisible="false" />
+
+    <Preference
+            android:key="@string/pref_key_detail_view_description"
+            android:title="@string/rule_details_field_description"
+            app:isPreferenceVisible="false" />
+
+    <DropDownPreference
+            android:entries="@array/visible_entries"
+            android:entryValues="@array/visible_values"
+            android:key="@string/pref_key_detail_view_visible"
+            android:persistent="false"
+            android:title="@string/rule_details_field_visible" />
+
+    <com.kaisar.xposed.godmode.preference.ImageViewPreference android:key="preview_image" />
+
+</PreferenceScreen>

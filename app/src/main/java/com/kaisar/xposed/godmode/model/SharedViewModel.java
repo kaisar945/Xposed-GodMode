@@ -12,8 +12,6 @@ import androidx.annotation.StringRes;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.kaisar.xposed.godmode.CrashHandler;
-import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.util.FileUtils;
@@ -37,11 +35,11 @@ import retrofit2.Callback;
 
 public class SharedViewModel extends ViewModel {
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    public final MutableLiveData<Integer> title = new MutableLiveData<>();
-    public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
-    public final MutableLiveData<String> selectedPackage = new MutableLiveData<>();
-    public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
+    private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
+    public final MutableLiveData<Integer> mTitle = new MutableLiveData<>();
+    public final MutableLiveData<AppRules> mAppRules = new MutableLiveData<>();
+    public final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
+    public final MutableLiveData<List<ViewRule>> mActRules = new MutableLiveData<>();
 
     public SharedViewModel() {
         LocalRepository.addObserver("*", new IObserver.Stub() {
@@ -51,20 +49,20 @@ public class SharedViewModel extends ViewModel {
 
             @Override
             public void onViewRuleChanged(String packageName, ActRules actRules) {
-                appRules.postValue(LocalRepository.reloadAllAppRules());
-                if (TextUtils.equals(packageName, selectedPackage.getValue())) {
-                    selectedPackage.postValue(packageName);
+                mAppRules.postValue(LocalRepository.loadAppRules());
+                if (TextUtils.equals(packageName, mSelectedPackage.getValue())) {
+                    mSelectedPackage.postValue(packageName);
                 }
             }
         });
     }
 
     public void loadAppRules() {
-        executor.execute(() -> appRules.postValue(LocalRepository.reloadAllAppRules()));
+        mExecutor.execute(() -> mAppRules.postValue(LocalRepository.loadAppRules()));
     }
 
     public void updateTitle(@StringRes int titleId) {
-        title.setValue(titleId);
+        mTitle.setValue(titleId);
     }
 
     public void getGroupInfo(Callback<Map<String, String>[]> cb) {
@@ -72,28 +70,23 @@ public class SharedViewModel extends ViewModel {
     }
 
     public void updateSelectedPackage(String packageName) {
-        selectedPackage.postValue(packageName);
+        mSelectedPackage.postValue(packageName);
     }
 
     public void updateViewRuleList(String packageName) {
         ArrayList<ViewRule> viewRules = new ArrayList<>();
-        AppRules appRules = this.appRules.getValue();
-        if (appRules.containsKey(packageName)) {
+        AppRules appRules = mAppRules.getValue();
+        if (appRules != null && appRules.containsKey(packageName)) {
             ActRules actRules = appRules.get(packageName);
-            if (!actRules.isEmpty()) {
+            if (actRules != null && !actRules.isEmpty()) {
                 for (List<ViewRule> values : actRules.values()) {
                     viewRules.addAll(values);
                 }
                 //Sort with generate timestamp
-                Collections.sort(viewRules, Collections.reverseOrder(new Comparator<ViewRule>() {
-                    @Override
-                    public int compare(ViewRule o1, ViewRule o2) {
-                        return Long.compare(o1.timestamp, o2.timestamp);
-                    }
-                }));
+                Collections.sort(viewRules, Collections.reverseOrder(Comparator.comparingLong(o -> o.timestamp)));
             }
         }
-        actRules.setValue(viewRules);
+        mActRules.setValue(viewRules);
     }
 
     private boolean isMainThread() {
@@ -132,7 +125,7 @@ public class SharedViewModel extends ViewModel {
 
     public void importExternalRules(Context context, Uri uri, ImportCallback callback) {
         Handler handler = new Handler();
-        executor.execute(() -> {
+        mExecutor.execute(() -> {
             try (InputStream in = context.getContentResolver().openInputStream(uri)) {
                 File file = new File(context.getCacheDir(), "app.gm");
                 try {

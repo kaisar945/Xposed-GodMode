@@ -35,13 +35,12 @@ public final class LocalRepository {
 
     private static final String MANIFEST = "manifest.json";
     private static final String PACK_SUFFIX = ".gzip";
-    private static AppRules sAppRules;
 
     public static void addObserver(String packageName, IObserver observer) {
         GodModeManager.getDefault().addObserver(packageName, observer);
     }
 
-    public static AppRules reloadAllAppRules() {
+    public static AppRules loadAppRules() {
         return GodModeManager.getDefault().getAllRules();
     }
 

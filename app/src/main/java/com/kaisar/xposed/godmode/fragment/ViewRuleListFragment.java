@@ -20,6 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,6 +33,7 @@ import com.kaisar.xposed.godmode.util.Preconditions;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,14 +71,17 @@ public final class ViewRuleListFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.selectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
-        mSharedViewModel.actRules.observe(this, viewRules -> {
-            if (viewRules.isEmpty()) {
+        mSharedViewModel.mSelectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
+        mSharedViewModel.mActRules.observe(this, newData -> {
+            if (newData.isEmpty()) {
                 requireActivity().onBackPressed();
             } else {
                 ListAdapter adapter = (ListAdapter) mRecyclerView.getAdapter();
                 if (adapter != null) {
-                    adapter.notifyDataSetChanged();
+                    List<ViewRule> oldData = adapter.getData();
+                    DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new Callback(oldData, newData));
+                    adapter.setData(newData);
+                    diffResult.dispatchUpdatesTo(adapter);
                 }
             }
         });
@@ -98,10 +103,50 @@ public final class ViewRuleListFragment extends Fragment {
         mSharedViewModel.updateTitle(R.string.title_app_rule);
     }
 
+    private static final class Callback extends DiffUtil.Callback {
+
+        final List<ViewRule> mOldData, mNewData;
+
+        private Callback(List<ViewRule> oldData, List<ViewRule> newData) {
+            mOldData = oldData;
+            mNewData = newData;
+        }
+
+        @Override
+        public int getOldListSize() {
+            return mOldData.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return mNewData.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            return mOldData.get(oldItemPosition).hashCode() == mNewData.get(newItemPosition).hashCode();
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            return true;
+        }
+    }
+
     private final class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> implements View.OnClickListener {
 
         @LayoutRes
         private final int mLayoutResId = androidx.preference.R.layout.preference;
+        private final List<ViewRule> mData = new ArrayList<>();
+
+        public void setData(List<ViewRule> newData) {
+            mData.clear();
+            mData.addAll(newData);
+        }
+
+        public List<ViewRule> getData() {
+            return mData;
+        }
 
         @NonNull
         @Override
@@ -112,9 +157,7 @@ public final class ViewRuleListFragment extends Fragment {
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            ViewRule viewRule = Preconditions.checkNotNull(viewRules).get(position);
-
+            ViewRule viewRule = mData.get(position);
             Glide.with(ViewRuleListFragment.this).load(new File(viewRule.imagePath)).into(holder.mImageView);
             if (viewRule.activityClass != null && viewRule.activityClass.lastIndexOf('.') > -1) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
@@ -137,8 +180,7 @@ public final class ViewRuleListFragment extends Fragment {
 
         @Override
         public int getItemCount() {
-            List<ViewRule> actRules = mSharedViewModel.actRules.getValue();
-            return actRules != null ? actRules.size() : 0;
+            return mData.size();
         }
 
         @Override

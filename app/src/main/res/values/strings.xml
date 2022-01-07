@@ -74,7 +74,7 @@
     <string name="rule_details_field_res_name">资源名称</string>
     <string name="rule_details_field_text">控件文本</string>
     <string name="rule_details_field_description">控件描述</string>
-    <string name="rule_details_field_visibility">可见性</string>
+    <string name="rule_details_field_visible">可见性</string>
     <string name="rule_details_invisible">占位</string>
     <string name="rule_details_gone">不占位</string>
     <string name="rule_details_set_alias">设置别名</string>
@@ -84,5 +84,19 @@
     <string name="block_fail">屏蔽失败:%1$s</string>
     <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
     <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
+
+    <string name="pref_key_detail_rule_info" translatable="false">rule_info</string>
+    <string name="pref_key_detail_rule_created_time" translatable="false">created_time</string>
+    <string name="pref_key_detail_rule_match_version" translatable="false">match_version</string>
+    <string name="pref_key_detail_rule_applied_activity" translatable="false">applied_activity</string>
+    <string name="pref_key_detail_rule_alias" translatable="false">alias</string>
+    <string name="pref_key_detail_view_bounds" translatable="false">view_bounds</string>
+    <string name="pref_key_detail_view_type" translatable="false">view_type</string>
+
+    <string name="pref_key_detail_view_depth" translatable="false">view_depth</string>
+    <string name="pref_key_detail_view_res_name" translatable="false">view_res_name</string>
+    <string name="pref_key_detail_view_text" translatable="false">view_text</string>
+    <string name="pref_key_detail_view_description" translatable="false">view_description</string>
+    <string name="pref_key_detail_view_visible" translatable="false">view_visibility</string>
 
 </resources>
