@@ -25,7 +25,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -83,7 +82,7 @@ public class SharedViewModel extends ViewModel {
                     viewRules.addAll(values);
                 }
                 //Sort with generate timestamp
-                Collections.sort(viewRules, Collections.reverseOrder(Comparator.comparingLong(o -> o.timestamp)));
+                Collections.sort(viewRules, (o1, o2) -> (int) (o1.timestamp - o2.timestamp));
             }
         }
         mActRules.setValue(viewRules);
