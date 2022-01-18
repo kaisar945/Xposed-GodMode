@@ -125,13 +125,14 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         List<ViewRule> viewRules = mSharedViewModel.mActRules.getValue();
-        ViewRule viewRule = viewRules.get(mCurIndex);
-        if (item.getItemId() == R.id.menu_revert) {
-            mSharedViewModel.deleteRule(viewRule);
-            requireActivity().onBackPressed();
-        }
+        if (viewRules != null) {
+            ViewRule viewRule = viewRules.get(mCurIndex);
+            if (item.getItemId() == R.id.menu_revert) {
+                mSharedViewModel.deleteRule(viewRule);
+                requireActivity().onBackPressed();
+            }
 //        else if (item.getItemId() == R.id.menu_export) {
 //            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
 //            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
@@ -145,6 +146,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 //            boolean ok = LocalRepository.exportRules(file.getPath(), viewRules);
 //            Snackbar.make(requireActivity(), ok ? getString(R.string.export_successful, file.getPath()) : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
 //        }
+        }
         return true;
     }
 
