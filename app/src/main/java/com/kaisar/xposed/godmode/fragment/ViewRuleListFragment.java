@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
@@ -32,7 +33,6 @@ import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -151,14 +151,14 @@ public final class ViewRuleListFragment extends Fragment {
         @NonNull
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View itemView = LayoutInflater.from(requireContext()).inflate(mLayoutResId, parent, false);
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(mLayoutResId, parent, false);
             return new ViewHolder(itemView);
         }
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             ViewRule viewRule = mData.get(position);
-            Glide.with(ViewRuleListFragment.this).load(new File(viewRule.imagePath)).into(holder.mImageView);
+            Glide.with(ViewRuleListFragment.this).load(viewRule).placeholder(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.mImageView);
             if (viewRule.activityClass != null && viewRule.activityClass.lastIndexOf('.') > -1) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
                 holder.mTitleTextView.setText(getString(R.string.field_activity, activityName));
