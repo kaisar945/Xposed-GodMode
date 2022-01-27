@@ -80,8 +80,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.mAppRules.observe(this, this::onAppRuleChange);
         mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
+        mSharedViewModel.mAppRules.observe(this, this::onAppRuleChange);
         if (!checkCrash()) {
             mSharedViewModel.loadAppRules();
         }
