@@ -68,9 +68,8 @@ public class GmGlideModule extends AppGlideModule {
 
         @Override
         public void loadData(@NonNull Priority priority, @NonNull DataCallback<? super Bitmap> callback) {
-            ParcelFileDescriptor pfd = GodModeManager.getDefault().openImageFileDescriptor(mViewRule.imagePath);
-            if (pfd != null) {
-                Bitmap bitmap = BitmapFactory.decodeFileDescriptor(pfd.getFileDescriptor());
+            Bitmap bitmap = GodModeManager.getDefault().openImageFileBitmap(mViewRule.imagePath);
+            if (bitmap != null) {
                 try {
                     Bitmap croppedBitmap = Bitmap.createBitmap(bitmap, mViewRule.x, mViewRule.y, mViewRule.width, mViewRule.height);
                     callback.onDataReady(croppedBitmap);

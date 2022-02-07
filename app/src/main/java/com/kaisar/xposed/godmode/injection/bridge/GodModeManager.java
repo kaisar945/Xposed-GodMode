@@ -122,12 +122,21 @@ public final class GodModeManager {
         }
     }
 
-    public ParcelFileDescriptor openImageFileDescriptor(String filePath) {
+    public Bitmap openImageFileBitmap(String filePath) {
         try {
-            return mGMM.openImageFileDescriptor(filePath);
+            return mGMM.openImageFileBitmap(filePath);
         } catch (RemoteException e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public boolean getStatus() {
+        try {
+            return mGMM.getStatus();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 }

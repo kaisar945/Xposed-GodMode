@@ -239,31 +239,25 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
     }
 
     private void dismissNodeSelectPanel() {
-        mMaskView.detachFromContainer();
-        mMaskView = null;
-        final View nodeSelectorPanel = mNodeSelectorPanel;
-        nodeSelectorPanel.post(new Runnable() {
-            @Override
-            public void run() {
-                nodeSelectorPanel.animate()
-                        .alpha(0)
-                        .translationX(nodeSelectorPanel.getWidth() / 2.0f)
-                        .setDuration(250)
-                        .setInterpolator(new AccelerateInterpolator(1.0f))
-                        .withEndAction(new Runnable() {
-                            @Override
-                            public void run() {
-                                ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
-                                if (parent != null) parent.removeView(nodeSelectorPanel);
-                            }
-                        })
-                        .start();
-            }
-        });
-        mNodeSelectorPanel = null;
-        mViewNodes.clear();
-        mCurrentViewIndex = 0;
-        mKeySelecting = false;
+        if (mMaskView != null) {
+            mMaskView.detachFromContainer();
+            mMaskView = null;
+            final View nodeSelectorPanel = mNodeSelectorPanel;
+            nodeSelectorPanel.post(() -> nodeSelectorPanel.animate()
+                    .alpha(0)
+                    .translationX(nodeSelectorPanel.getWidth() / 2.0f)
+                    .setDuration(250)
+                    .setInterpolator(new AccelerateInterpolator(1.0f))
+                    .withEndAction(() -> {
+                        ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
+                        if (parent != null) parent.removeView(nodeSelectorPanel);
+                    })
+                    .start());
+            mNodeSelectorPanel = null;
+            mViewNodes.clear();
+            mCurrentViewIndex = 0;
+            mKeySelecting = false;
+        }
     }
 
     @Override

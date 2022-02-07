@@ -3,6 +3,7 @@ package com.kaisar.xposed.godmode.service;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Binder;
 import android.os.Environment;
 import android.os.Handler;
@@ -32,6 +33,7 @@ import com.kaisar.xposed.godmode.util.Preconditions;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -57,7 +59,7 @@ import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXU;
 public final class GodModeManagerService extends IGodModeManager.Stub implements Handler.Callback {
 
     // /data/godmode
-    private static final String BASE_DIR = String.format("%s/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
+    private static final String BASE_DIR = String.format("%s/%s", Environment.getDownloadCacheDirectory().getAbsolutePath(), "godmode");
     // /data/godmode/conf
     private static final String CONFIG_FILE_NAME = "conf";
     // /data/godmode/{package}/package.rule
@@ -421,17 +423,22 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     @Override
-    public ParcelFileDescriptor openImageFileDescriptor(String filePath) throws RemoteException {
+    public Bitmap openImageFileBitmap(String filePath) throws RemoteException {
         enforcePermission(BuildConfig.APPLICATION_ID, "open fd fail permission denied");
         if (!filePath.startsWith(BASE_DIR) || !filePath.endsWith(IMAGE_FILE_SUFFIX))
             throw new RemoteException(String.format("unauthorized access %s", filePath));
         try {
-            return ParcelFileDescriptor.open(new File(filePath), ParcelFileDescriptor.MODE_READ_ONLY);
+            return BitmapFactory.decodeStream(new FileInputStream(filePath));
         } catch (FileNotFoundException e) {
             RemoteException remoteException = new RemoteException();
             remoteException.initCause(e);
             throw remoteException;
         }
+    }
+
+    @Override
+    public boolean getStatus() {
+        return true;
     }
 
     private String saveBitmap(Bitmap bitmap, String dir) {

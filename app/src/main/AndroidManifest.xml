@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-        package="com.kaisar.xposed.godmode">
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.kaisar.xposed.godmode">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
     <uses-permission-sdk-23 android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
@@ -67,8 +70,8 @@
                 android:name="xposedminversion"
                 android:value="53" />
         <meta-data
-                android:name="xposed_init"
-                android:value="com.kaisar.xposed.godmode.injection.GodModeInjector" />
+            android:name="xposedscope"
+            android:resource="@array/need_module"/>
     </application>
 
 </manifest>

@@ -29,6 +29,8 @@ interface IGodModeManager {
 
     boolean deleteRules(String packageName);
 
-    ParcelFileDescriptor openImageFileDescriptor(String filePath);
+    Bitmap openImageFileBitmap(String filePath);
+
+    boolean getStatus();
 
 }

@@ -73,6 +73,7 @@ public class SharedViewModel extends ViewModel {
     }
 
     public void updateViewRuleList(String packageName) {
+
         ArrayList<ViewRule> viewRules = new ArrayList<>();
         AppRules appRules = mAppRules.getValue();
         if (appRules != null && appRules.containsKey(packageName)) {

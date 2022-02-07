@@ -20,10 +20,14 @@ import com.kaisar.xposed.godmode.util.ZipUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -50,16 +54,17 @@ public final class LocalRepository {
         // Save rule preview image
         for (ViewRule viewRule : viewRules) {
             ViewRule viewRuleCopy = viewRule.clone();
-            ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openImageFileDescriptor(viewRule.imagePath);
-            if (parcelFileDescriptor != null) {
+            Bitmap bitmap = GodModeManager.getDefault().openImageFileBitmap(viewRule.imagePath);
+            if (bitmap != null) {
                 try {
-                    try (FileChannel inChannel = new FileInputStream(parcelFileDescriptor.getFileDescriptor()).getChannel()) {
-                        File file = new File(GodModeApplication.getApplication().getCacheDir(), System.currentTimeMillis() + ".webp");
-                        try (FileChannel outChannel = new FileOutputStream(file).getChannel()) {
-                            inChannel.transferTo(0, inChannel.size(), outChannel);
-                            filePathList.add(file.getPath());
-                            viewRuleCopy.imagePath = file.getName();
-                        }
+                    File file = new File(GodModeApplication.getApplication().getCacheDir(), System.currentTimeMillis() + ".webp");
+                    try (FileChannel outChannel = new FileOutputStream(file).getChannel()) {
+                        InputStream inputStream = Bitmap2IS(bitmap);
+                        byte[] buffer = new byte[inputStream.available()];
+                        inputStream.read(buffer);
+                        outChannel.write(byte2Byffer(buffer));
+                        filePathList.add(file.getPath());
+                        viewRuleCopy.imagePath = file.getName();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -85,6 +90,20 @@ public final class LocalRepository {
                 FileUtils.delete(filepath);
             }
         }
+    }
+
+    public static ByteBuffer byte2Byffer(byte[] byteArray) {
+        ByteBuffer buffer=ByteBuffer.allocate(byteArray.length);
+        buffer.put(byteArray);
+        buffer.flip();
+        return buffer;
+    }
+
+    private static InputStream Bitmap2IS(Bitmap bm){
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bm.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+        InputStream sbs = new ByteArrayInputStream(baos.toByteArray());
+        return sbs;
     }
 
     public static boolean importRules(String rulesFile) throws IOException {

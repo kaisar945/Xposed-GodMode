@@ -71,10 +71,10 @@ public final class NotificationService extends Service implements SharedPreferen
 
     private Notification buildNotification(boolean editMode) {
         Intent managerIntent = new Intent(this, SettingsActivity.class);
-        PendingIntent managerPendingIntent = PendingIntent.getActivity(this, 0, managerIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent managerPendingIntent = PendingIntent.getActivity(this, 0, managerIntent, android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
         Intent intent = new Intent(this, NotificationService.class);
         intent.setAction(Intent.ACTION_EDIT);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
         return new NotificationCompat.Builder(this, TAG)
                 .setSmallIcon(R.drawable.ic_angel_small)
                 .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_angel_normal))

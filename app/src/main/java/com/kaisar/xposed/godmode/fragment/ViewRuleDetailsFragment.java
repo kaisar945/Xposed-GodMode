@@ -212,17 +212,14 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         @Override
         public Bitmap loadInBackground() {
             try {
-                try (ParcelFileDescriptor parcelFileDescriptor = GodModeManager.getDefault().openImageFileDescriptor(mViewRule.imagePath)) {
-                    Objects.requireNonNull(parcelFileDescriptor, String.format("Can not open %s", mViewRule.imagePath));
-                    Bitmap bitmap = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor()).copy(Bitmap.Config.ARGB_8888, true);
-                    Bitmap newBitmap = bitmap.copy(bitmap.getConfig(), true);
-                    Paint markPaint = new Paint();
-                    markPaint.setColor(Color.RED);
-                    markPaint.setAlpha(100);
-                    Canvas canvas = new Canvas(newBitmap);
-                    canvas.drawRect(mViewRule.x, mViewRule.y, mViewRule.x + mViewRule.width, mViewRule.y + mViewRule.height, markPaint);
-                    return newBitmap;
-                }
+                Bitmap bitmap = GodModeManager.getDefault().openImageFileBitmap(mViewRule.imagePath);
+                Bitmap newBitmap = bitmap.copy(bitmap.getConfig(), true);
+                Paint markPaint = new Paint();
+                markPaint.setColor(Color.RED);
+                markPaint.setAlpha(100);
+                Canvas canvas = new Canvas(newBitmap);
+                canvas.drawRect(mViewRule.x, mViewRule.y, mViewRule.x + mViewRule.width, mViewRule.y + mViewRule.height, markPaint);
+                return newBitmap;
             } catch (Exception e) {
                 Logger.w(TAG, e.getMessage());
                 return null;

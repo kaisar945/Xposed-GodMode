@@ -8,6 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import androidx.annotation.Keep;
 
+import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
+
 /**
  * Created by jrsen on 17-11-22.
  */
@@ -41,6 +43,7 @@ public final class XposedEnvironment {
     }
 
     public static boolean isModuleActive(Context context) {
+        if (GodModeManager.getDefault().getStatus()) return true;
         try {
             ContentResolver contentResolver = context.getContentResolver();
             Uri uri = Uri.parse("content://me.weishu.exposed.CP/");
