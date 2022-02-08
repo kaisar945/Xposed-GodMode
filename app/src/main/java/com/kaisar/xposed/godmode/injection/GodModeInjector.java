@@ -19,6 +19,10 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.kaisar.xposed.godmode.BuildConfig;
@@ -169,7 +173,11 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
 
         DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
         switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-//        XposedHelpers.findAndHookConstructor(View.class.getName(), loadPackageParam.classLoader, Context.class, displayPropertiesHook);
+        // TODO: 不能hook ViewGroup FrameLayout 不然会无法显示控制
+        XposedHelpers.findAndHookMethod(View.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
+        XposedHelpers.findAndHookMethod(TextView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
+        XposedHelpers.findAndHookMethod(ImageView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
+        XposedHelpers.findAndHookMethod(LinearLayout.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
 
 //        //hook debug layout
 //        if (Build.VERSION.SDK_INT < 29) {
