@@ -13,7 +13,6 @@
     <string name="dialog_btn_alipay">Alipay</string>
     <string name="dialog_btn_wxpay">WechatPay</string>
     <string name="menu_revert">Revoke</string>
-    <string name="active">ACTIVE</string>
     <string name="not_active_module">GodMode module is not activated</string>
     <string name="hey_guy">Hey guy</string>
     <string name="pref_description_god_mode">Start editor</string>
@@ -21,7 +20,6 @@
     <string name="thanks">Thank you guys</string>
     <string name="tips_qrcord">The QR code image has been placed in your gallery</string>
     <string name="welcome_title">Hey guys, Welcome</string>
-    <string name="not_found_xp_installer">Not found Xposed Manager</string>
     <string name="enter_edit">Exit editor</string>
     <string name="exit_edit">Start editor</string>
     <string name="manage">Manager</string>

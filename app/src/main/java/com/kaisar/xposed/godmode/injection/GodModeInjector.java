@@ -1,27 +1,22 @@
 package com.kaisar.xposed.godmode.injection;
 
+import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
+
 import android.app.Activity;
-import android.app.Application;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.Display;
-import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
-import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
 import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
@@ -34,7 +29,6 @@ import com.kaisar.xposed.godmode.injection.util.PackageManagerUtils;
 import com.kaisar.xposed.godmode.injection.util.Property;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.service.GodModeManagerService;
-import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xservicemanager.XServiceManager;
 
 import java.util.List;
@@ -44,9 +38,7 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
-import de.robv.android.xposed.callbacks.XCallback;
 
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 /**
  * Created by jrsen on 17-10-13.
  */
@@ -58,6 +50,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
     private static State state = State.UNKNOWN;
     private static DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
+
     enum State {
         UNKNOWN,
         ALLOWED,
@@ -85,35 +78,24 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         }
         GodModeInjector.loadPackageParam = loadPackageParam;
         final String packageName = loadPackageParam.packageName;
-        switch (packageName) {
-            case "android"://Run in system process
-                Logger.d(TAG, "inject GodModeManagerService as system service.");
-                XServiceManager.initForSystemServer();
-                XServiceManager.registerService("godmode", new XServiceManager.ServiceFetcher<Binder>() {
-                    @Override
-                    public Binder createService(Context ctx) {
-                        return new GodModeManagerService(ctx);
-                    }
-                });
-                return;
-            case BuildConfig.APPLICATION_ID://Run in God's management process
-                XposedHelpers.findAndHookMethod(XposedEnvironment.class.getName(), loadPackageParam.classLoader, "isModuleActive", Context.class, XC_MethodReplacement.returnConstant(true));
-                return;
-            default://Run in other application processes
-                XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class, new XC_MethodHook() {
-                    @Override
-                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                        //Volume key select old
-                        dispatchKeyEventHook.setactivity((Activity) param.thisObject);
-                        super.afterHookedMethod(param);
-                    }
-                });
-                registerHook();
-                GodModeManager gmManager = GodModeManager.getDefault();
-                gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
-                switchProp.set(gmManager.isInEditMode());
-                actRuleProp.set(gmManager.getRules(loadPackageParam.packageName));
-                break;
+        if ("android".equals(packageName)) {//Run in system process
+            Logger.d(TAG, "inject GodModeManagerService as system service.");
+            XServiceManager.initForSystemServer();
+            XServiceManager.registerService("godmode", (XServiceManager.ServiceFetcher<Binder>) GodModeManagerService::new);
+        } else {//Run in other application processes
+            XposedHelpers.findAndHookMethod(Activity.class, "onCreate", Bundle.class, new XC_MethodHook() {
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    //Volume key select old
+                    dispatchKeyEventHook.setactivity((Activity) param.thisObject);
+                    super.afterHookedMethod(param);
+                }
+            });
+            registerHook();
+            GodModeManager gmManager = GodModeManager.getDefault();
+            gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
+            switchProp.set(gmManager.isInEditMode());
+            actRuleProp.set(gmManager.getRules(loadPackageParam.packageName));
         }
     }
 
@@ -192,7 +174,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         //Disable GM component show layout bounds
         XC_MethodHook disableDebugDraw = new XC_MethodHook() {
             @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+            protected void beforeHookedMethod(MethodHookParam param) {
                 View view = (View) param.thisObject;
                 if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
                     param.setResult(null);

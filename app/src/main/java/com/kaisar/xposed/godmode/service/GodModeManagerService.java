@@ -1,6 +1,10 @@
 package com.kaisar.xposed.godmode.service;
 
 
+import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXG;
+import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXO;
+import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXU;
+
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Binder;
@@ -41,10 +45,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXG;
-import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXO;
-import static com.kaisar.xposed.godmode.injection.util.FileUtils.S_IRWXU;
 
 
 /**
@@ -226,6 +226,11 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         if (!checkPermission(permPackage)) {
             throw new RemoteException(message);
         }
+    }
+
+    @Override
+    public boolean hasLight() {
+        return true;
     }
 
     /**

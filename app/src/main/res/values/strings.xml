@@ -55,8 +55,6 @@
 
     <string name="hey_guy">嘿 伙计</string>
     <string name="not_active_module">上帝模式还没有激活，呃… 我是说也许你应该到管理器中重新激活一下</string>
-    <string name="active">激活</string>
-    <string name="not_found_xp_installer">噢！ 我的伙计 没有在系统里发现XposedInstaller</string>
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 
     <string name="snack_bar_msg_revert_rule_fail">删除规则失败</string>

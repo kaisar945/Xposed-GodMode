@@ -18,7 +18,6 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.util.XposedEnvironment;
 
 /**
  * Created by jrsen on 17-10-26.
@@ -39,7 +38,7 @@ public final class NotificationService extends Service implements SharedPreferen
     public int onStartCommand(Intent intent, int flags, int startId) {
         boolean enable = isEditMode();
         if (TextUtils.equals(intent.getAction(), Intent.ACTION_EDIT)) {
-            if (!XposedEnvironment.isModuleActive(this)) {
+            if (!GodModeManager.getDefault().hasLight()) {
                 Toast.makeText(this, R.string.not_active_module, Toast.LENGTH_SHORT).show();
                 return super.onStartCommand(intent, flags, startId);
             }

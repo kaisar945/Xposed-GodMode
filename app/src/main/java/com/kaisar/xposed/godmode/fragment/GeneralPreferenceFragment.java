@@ -44,7 +44,6 @@ import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.util.XposedEnvironment;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.Map;
@@ -167,8 +166,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         if (previousVersionCode != BuildConfig.VERSION_CODE) {
             sp.edit().putInt(KEY_VERSION_CODE, BuildConfig.VERSION_CODE).apply();
             showUpdatePolicyDialog();
-
-        } else if (!XposedEnvironment.isModuleActive(getContext())) {
+        } else if (!GodModeManager.getDefault().hasLight()) {
             showEnableModuleDialog();
         }
     }
@@ -188,13 +186,13 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
 
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
-        return XposedEnvironment.isModuleActive(requireContext());
+        return GodModeManager.getDefault().hasLight();
     }
 
     @Override
     public boolean onPreferenceClick(Preference preference) {
         if (mEditorSwitchPreference == preference) {
-            if (!XposedEnvironment.isModuleActive(requireContext())) {
+            if (!GodModeManager.getDefault().hasLight()) {
                 Toast.makeText(requireContext(), R.string.not_active_module, Toast.LENGTH_SHORT).show();
                 return true;
             }
@@ -252,15 +250,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         new AlertDialog.Builder(requireContext())
                 .setTitle(R.string.hey_guy)
                 .setMessage(R.string.not_active_module)
-                .setPositiveButton(R.string.active, (dialog, which) -> {
-                    XposedEnvironment.XposedType xposedType = XposedEnvironment.checkXposedType(requireContext());
-                    if (xposedType != XposedEnvironment.XposedType.UNKNOWN) {
-                        Intent launchIntent = requireContext().getPackageManager().getLaunchIntentForPackage(xposedType.PACKAGE_NAME);
-                        startActivity(launchIntent);
-                    } else {
-                        Snackbar.make(requireActivity(), R.string.not_found_xp_installer, Snackbar.LENGTH_LONG).show();
-                    }
-                })
+                .setPositiveButton(android.R.string.ok, null)
                 .show();
     }
 
