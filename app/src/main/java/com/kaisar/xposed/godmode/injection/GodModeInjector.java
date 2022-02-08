@@ -126,12 +126,8 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
             Intent homeIntent = new Intent(Intent.ACTION_MAIN);
             homeIntent.addCategory(Intent.CATEGORY_HOME);
             List<ResolveInfo> resolveInfos;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, PackageManager.MATCH_ALL, 0);
-            } else {
-                resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, 0, 0);
-            }
-//            Logger.d(TAG, "launcher apps:" + resolveInfos);
+            resolveInfos = PackageManagerUtils.queryIntentActivities(homeIntent, null, PackageManager.MATCH_ALL, 0);
+            //            Logger.d(TAG, "launcher apps:" + resolveInfos);
             if (resolveInfos != null) {
                 for (ResolveInfo resolveInfo : resolveInfos) {
                     if (!TextUtils.equals("com.android.settings", packageName) && TextUtils.equals(resolveInfo.activityInfo.packageName, packageName)) {
@@ -142,12 +138,8 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
 
             //检查是否为键盘应用
             Intent keyboardIntent = new Intent("android.view.InputMethod");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, PackageManager.MATCH_ALL, 0);
-            } else {
-                resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, 0, 0);
-            }
-//            Logger.d(TAG, "keyboard apps:" + resolveInfos);
+            resolveInfos = PackageManagerUtils.queryIntentServices(keyboardIntent, null, PackageManager.MATCH_ALL, 0);
+            //            Logger.d(TAG, "keyboard apps:" + resolveInfos);
             if (resolveInfos != null) {
                 for (ResolveInfo resolveInfo : resolveInfos) {
                     if (TextUtils.equals(resolveInfo.serviceInfo.packageName, packageName)) {
@@ -175,32 +167,36 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(Activity.class, "onPostResume", lifecycleHook);
         XposedHelpers.findAndHookMethod(Activity.class, "onDestroy", lifecycleHook);
 
-        //hook debug layout
-        if (Build.VERSION.SDK_INT < 29) {
-            SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
-            switchProp.addOnPropertyChangeListener(systemPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "native_get_boolean", String.class, boolean.class, systemPropertiesHook);
-        } else {
-            DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
-            switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
-        }
+        DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+        switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+//        XposedHelpers.findAndHookConstructor(View.class.getName(), loadPackageParam.classLoader, Context.class, displayPropertiesHook);
 
-        //Disable show layout margin bound
-        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
-
-        //Disable GM component show layout bounds
-        XC_MethodHook disableDebugDraw = new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                View view = (View) param.thisObject;
-                if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
-                    param.setResult(null);
-                }
-            }
-        };
-        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
-        XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
+//        //hook debug layout
+//        if (Build.VERSION.SDK_INT < 29) {
+//            SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
+//            switchProp.addOnPropertyChangeListener(systemPropertiesHook);
+//            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "native_get_boolean", String.class, boolean.class, systemPropertiesHook);
+//        } else {
+//            DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+//            switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+//            XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
+//        }
+//
+//        //Disable show layout margin bound
+//        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
+//
+//        //Disable GM component show layout bounds
+//        XC_MethodHook disableDebugDraw = new XC_MethodHook() {
+//            @Override
+//            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+//                View view = (View) param.thisObject;
+//                if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
+//                    param.setResult(null);
+//                }
+//            }
+//        };
+//        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
+//        XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
 
         EventHandlerHook eventHandlerHook = new EventHandlerHook();
         switchProp.addOnPropertyChangeListener(eventHandlerHook);
