@@ -173,11 +173,10 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
 
         DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
         switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-        // TODO: 不能hook ViewGroup FrameLayout 不然会无法显示控制
+        // TODO: 不能hook ViewGroup FrameLayout LinearLayout 不然会无法显示控制
         XposedHelpers.findAndHookMethod(View.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
         XposedHelpers.findAndHookMethod(TextView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
         XposedHelpers.findAndHookMethod(ImageView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
-        XposedHelpers.findAndHookMethod(LinearLayout.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
 
 //        //hook debug layout
 //        if (Build.VERSION.SDK_INT < 29) {
@@ -213,5 +212,4 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         //Drag view support
         XposedHelpers.findAndHookMethod(View.class, "dispatchTouchEvent", MotionEvent.class, eventHandlerHook);
     }
-
 }
