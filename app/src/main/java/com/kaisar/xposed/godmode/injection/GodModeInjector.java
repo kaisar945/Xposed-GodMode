@@ -173,10 +173,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
 
         DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
         switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-        // TODO: 不能hook ViewGroup FrameLayout LinearLayout 不然会无法显示控制
-        XposedHelpers.findAndHookMethod(View.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
-        XposedHelpers.findAndHookMethod(TextView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
-        XposedHelpers.findAndHookMethod(ImageView.class.getName(), loadPackageParam.classLoader, "onDraw", Canvas.class, displayPropertiesHook);
+        XposedHelpers.findAndHookConstructor(View.class, Context.class, displayPropertiesHook);
 
 //        //hook debug layout
 //        if (Build.VERSION.SDK_INT < 29) {
