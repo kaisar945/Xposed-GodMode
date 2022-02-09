@@ -96,5 +96,6 @@
     <string name="pref_key_detail_view_text" translatable="false">view_text</string>
     <string name="pref_key_detail_view_description" translatable="false">view_description</string>
     <string name="pref_key_detail_view_visible" translatable="false">view_visibility</string>
+    <string name="pref_key_detail_preview_image" translatable="false">preview_image</string>
 
 </resources>

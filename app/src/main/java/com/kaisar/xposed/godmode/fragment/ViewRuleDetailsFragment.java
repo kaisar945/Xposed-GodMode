@@ -1,7 +1,6 @@
 package com.kaisar.xposed.godmode.fragment;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -50,11 +49,11 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     private CharSequence mLabel;
     private CharSequence mPackageName;
     private ViewRule mViewRule;
-    private Bitmap mRuleImageBitmap;
 
     private SharedViewModel mSharedViewModel;
     private EditTextPreference mAliasPreference;
     private DropDownPreference mVisiblePreference;
+    private ImageViewPreference mImagePreference;
 
     public void setIcon(Drawable icon) {
         mIcon = icon;
@@ -151,15 +150,10 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         mVisiblePreference.setEntryValues(values);
         mVisiblePreference.setValue(String.valueOf(mViewRule.visibility));
 
+        mImagePreference = (ImageViewPreference) findPreference(getString(R.string.pref_key_detail_preview_image));
         if (!TextUtils.isEmpty(mViewRule.imagePath)) {
             LoaderManager.getInstance(this).initLoader(0, null, this).forceLoad();
         }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        recycleNullableBitmap(mRuleImageBitmap);
     }
 
     @Override
@@ -187,10 +181,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     @Override
     public void onLoadFinished(@NonNull Loader<Bitmap> loader, Bitmap bitmap) {
         if (bitmap != null) {
-            mRuleImageBitmap = bitmap;
-            ImageViewPreference imageViewPreference = new ImageViewPreference(getContext());
-            imageViewPreference.setImageBitmap(bitmap);
-            getPreferenceScreen().addPreference(imageViewPreference);
+            mImagePreference.setImageBitmap(bitmap);
         }
         LoaderManager.getInstance(this).destroyLoader(0);
     }
