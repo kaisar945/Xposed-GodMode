@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
+import android.content.res.XModuleResources;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
@@ -44,6 +46,7 @@ import com.kaisar.xservicemanager.XServiceManager;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedHelpers;
@@ -55,13 +58,23 @@ import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
  * Created by jrsen on 17-10-13.
  */
 
-public final class GodModeInjector implements IXposedHookLoadPackage {
+public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
     public final static Property<Boolean> switchProp = new Property<>();
     public final static Property<ActRules> actRuleProp = new Property<>();
     public static XC_LoadPackage.LoadPackageParam loadPackageParam;
     private static State state = State.UNKNOWN;
     private static DispatchKeyEventHook dispatchKeyEventHook = new DispatchKeyEventHook();
+    private static String modulePath;
+    public static Resources moduleRes;
+
+    // Injector Res
+    @Override
+    public void initZygote(StartupParam startupParam) {
+        modulePath = startupParam.modulePath;
+        moduleRes = XModuleResources.createInstance(modulePath, null);
+    }
+
     enum State {
         UNKNOWN,
         ALLOWED,

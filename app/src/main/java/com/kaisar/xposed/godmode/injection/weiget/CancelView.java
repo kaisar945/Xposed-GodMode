@@ -52,7 +52,7 @@ public final class CancelView extends View {
     }
 
     private void initWidget(Context context) {
-        text = GmResources.getText(context, R.string.top_revert_tip);
+        text = GmResources.getText(R.string.top_revert_tip);
         rectPaint.setStyle(Paint.Style.FILL);
         rectPaint.setColor(Color.argb(230, 139, 195, 75));
         textPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 15f, getResources().getDisplayMetrics()));

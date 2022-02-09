@@ -15,8 +15,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
-
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
@@ -109,93 +107,74 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
             seekbar.setMax(mViewNodes.size() - 1);
             seekbar.setOnSeekBarChangeListener(this);
             View btnBlock = mNodeSelectorPanel.findViewById(R.id.block);
-            TooltipCompat.setTooltipText(btnBlock, GmResources.getText(activity, R.string.accessibility_block));
-            btnBlock.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    try {
-                        mNodeSelectorPanel.setAlpha(0f);
-                        final View view = mViewNodes.get(mCurrentViewIndex).get();
-                        Logger.d(TAG, "removed view = " + view);
-                        if (view != null) {
-                            //hide overlay
-                            mMaskView.updateOverlayBounds(new Rect());
-                            final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
-                            final ViewRule viewRule = ViewHelper.makeRule(view);
-                            final ParticleView particleView = new ParticleView(activity);
-                            particleView.setDuration(1000);
-                            particleView.attachToContainer(container);
-                            particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
-                                @Override
-                                public void onAnimationStart(View animView, Animator animation) {
-                                    viewRule.visibility = View.GONE;
-                                    ViewController.applyRule(view, viewRule);
-                                }
+            TooltipCompat.setTooltipText(btnBlock, GmResources.getText(R.string.accessibility_block));
+            btnBlock.setOnClickListener(v -> {
+                try {
+                    mNodeSelectorPanel.setAlpha(0f);
+                    final View view = mViewNodes.get(mCurrentViewIndex).get();
+                    Logger.d(TAG, "removed view = " + view);
+                    if (view != null) {
+                        //hide overlay
+                        mMaskView.updateOverlayBounds(new Rect());
+                        final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
+                        final ViewRule viewRule = ViewHelper.makeRule(view);
+                        final ParticleView particleView = new ParticleView(activity);
+                        particleView.setDuration(1000);
+                        particleView.attachToContainer(container);
+                        particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
+                            @Override
+                            public void onAnimationStart(View animView, Animator animation) {
+                                viewRule.visibility = View.GONE;
+                                ViewController.applyRule(view, viewRule);
+                            }
 
-                                @Override
-                                public void onAnimationEnd(View animView, Animator animation) {
-                                    GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
-                                    recycleNullableBitmap(snapshot);
-                                    particleView.detachFromContainer();
-                                    mNodeSelectorPanel.animate()
-                                            .alpha(1.0f)
-                                            .setInterpolator(new DecelerateInterpolator(1.0f))
-                                            .setDuration(300)
-                                            .start();
-                                }
-                            });
-                            particleView.boom(view);
-                        }
-                        mViewNodes.remove(mCurrentViewIndex--);
-                        seekbar.setMax(mViewNodes.size() - 1);
-                    } catch (Exception e) {
-                        Logger.e(TAG, "block fail", e);
-                        Toast.makeText(activity, GmResources.getString(activity, R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
+                            @Override
+                            public void onAnimationEnd(View animView, Animator animation) {
+                                GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
+                                recycleNullableBitmap(snapshot);
+                                particleView.detachFromContainer();
+                                mNodeSelectorPanel.animate()
+                                        .alpha(1.0f)
+                                        .setInterpolator(new DecelerateInterpolator(1.0f))
+                                        .setDuration(300)
+                                        .start();
+                            }
+                        });
+                        particleView.boom(view);
                     }
+                    mViewNodes.remove(mCurrentViewIndex--);
+                    seekbar.setMax(mViewNodes.size() - 1);
+                } catch (Exception e) {
+                    Logger.e(TAG, "block fail", e);
+                    Toast.makeText(activity, GmResources.getString(R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             });
             View exchange = mNodeSelectorPanel.findViewById(R.id.exchange);
             View topcentent = mNodeSelectorPanel.findViewById(R.id.topcentent);
-            exchange.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Display display = activity.getWindowManager().getDefaultDisplay();
-                    int width = display.getWidth();
-                    int Targetwidth = width - (width / 6);
-                    if (topcentent.getPaddingRight() == Targetwidth) {
-                        topcentent.setPadding(4, 4, 12, 4);
-                    } else {
-                        topcentent.setPadding(4, 4, Targetwidth, 4);
-                    }
+            exchange.setOnClickListener(v -> {
+                Display display = activity.getWindowManager().getDefaultDisplay();
+                int width = display.getWidth();
+                int Targetwidth = width - (width / 6);
+                if (topcentent.getPaddingRight() == Targetwidth) {
+                    topcentent.setPadding(4, 4, 12, 4);
+                } else {
+                    topcentent.setPadding(4, 4, Targetwidth, 4);
                 }
             });
             View btnUp = mNodeSelectorPanel.findViewById(R.id.Up);
-            btnUp.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    seekbaradd();
-                }
-            });
+            btnUp.setOnClickListener(v -> seekbaradd());
             View btnDown = mNodeSelectorPanel.findViewById(R.id.Down);
-            btnDown.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    seekbarreduce();
-                }
-            });
+            btnDown.setOnClickListener(v -> seekbarreduce());
             container.addView(mNodeSelectorPanel);
             mNodeSelectorPanel.setAlpha(0);
-            mNodeSelectorPanel.post(new Runnable() {
-                @Override
-                public void run() {
-                    mNodeSelectorPanel.setTranslationX(mNodeSelectorPanel.getWidth() / 2.0f);
-                    mNodeSelectorPanel.animate()
-                            .alpha(1)
-                            .translationX(0)
-                            .setDuration(300)
-                            .setInterpolator(new DecelerateInterpolator(1.0f))
-                            .start();
-                }
+            mNodeSelectorPanel.post(() -> {
+                mNodeSelectorPanel.setTranslationX(mNodeSelectorPanel.getWidth() / 2.0f);
+                mNodeSelectorPanel.animate()
+                        .alpha(1)
+                        .translationX(0)
+                        .setDuration(300)
+                        .setInterpolator(new DecelerateInterpolator(1.0f))
+                        .start();
             });
             mKeySelecting = true;
             XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, new XC_MethodHook() {
@@ -242,17 +221,19 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
         if (mMaskView != null) {
             mMaskView.detachFromContainer();
             mMaskView = null;
-            final View nodeSelectorPanel = mNodeSelectorPanel;
-            nodeSelectorPanel.post(() -> nodeSelectorPanel.animate()
-                    .alpha(0)
-                    .translationX(nodeSelectorPanel.getWidth() / 2.0f)
-                    .setDuration(250)
-                    .setInterpolator(new AccelerateInterpolator(1.0f))
-                    .withEndAction(() -> {
-                        ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
-                        if (parent != null) parent.removeView(nodeSelectorPanel);
-                    })
-                    .start());
+            if (mNodeSelectorPanel != null) {
+                final View nodeSelectorPanel = mNodeSelectorPanel;
+                nodeSelectorPanel.post(() -> nodeSelectorPanel.animate()
+                        .alpha(0)
+                        .translationX(nodeSelectorPanel.getWidth() / 2.0f)
+                        .setDuration(250)
+                        .setInterpolator(new AccelerateInterpolator(1.0f))
+                        .withEndAction(() -> {
+                            ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
+                            if (parent != null) parent.removeView(nodeSelectorPanel);
+                        })
+                        .start());
+            }
             mNodeSelectorPanel = null;
             mViewNodes.clear();
             mCurrentViewIndex = 0;
