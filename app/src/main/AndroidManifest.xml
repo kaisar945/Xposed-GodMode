@@ -67,8 +67,8 @@
                 android:name="xposedminversion"
                 android:value="53" />
         <meta-data
-                android:name="xposed_init"
-                android:value="com.kaisar.xposed.godmode.injection.GodModeInjector" />
+                android:name="xposedscope"
+                android:resource="@array/need_module"/>
     </application>
 
 </manifest>

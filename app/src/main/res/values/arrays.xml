@@ -15,4 +15,8 @@
         <item>4</item>
         <item>8</item>
     </string-array>
+
+    <array name="need_module">
+        <item>android</item>
+    </array>
 </resources>
