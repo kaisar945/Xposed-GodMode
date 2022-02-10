@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 
 import com.kaisar.xposed.godmode.injection.ViewHelper;
@@ -25,7 +26,7 @@ public final class DisplayPropertiesHook extends XC_MethodHook implements Proper
     @Override
     protected void afterHookedMethod(MethodHookParam param) {
         if (param.thisObject instanceof LinearLayout) return;
-//        if (param.thisObject instanceof ViewGroup) return;
+        if (param.thisObject instanceof ViewGroup) return;
         if (ViewHelper.TAG_GM_CMP.equals(((View) param.thisObject).getTag())) return;
 
         View view = (View) param.thisObject;
