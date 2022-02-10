@@ -2,12 +2,14 @@ package com.kaisar.xposed.godmode.injection;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.content.res.XModuleResources;
 import android.os.Binder;
@@ -17,6 +19,7 @@ import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
 
+import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
 import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
@@ -30,11 +33,15 @@ import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.service.GodModeManagerService;
 import com.kaisar.xservicemanager.XServiceManager;
 
+import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
@@ -82,6 +89,10 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
 
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) {
+        if (R.string.res_inject_success >>> 24 == 0x7f) {
+            XposedBridge.log("package id must NOT be 0x7f, reject loading...");
+            return;
+        }
         if (!loadPackageParam.isFirstApplication) {
             return;
         }
@@ -96,7 +107,9 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     //Volume key select old
-                    dispatchKeyEventHook.setactivity((Activity) param.thisObject);
+                    Activity activity = (Activity) param.thisObject;
+                    dispatchKeyEventHook.setactivity(activity);
+                    injectModuleResources(activity.getResources());
                     super.afterHookedMethod(param);
                 }
             });
@@ -105,6 +118,58 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
             gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
             switchProp.set(gmManager.isInEditMode());
             actRuleProp.set(gmManager.getRules(loadPackageParam.packageName));
+        }
+    }
+
+    /**
+     * Inject resources into hook software - Code from qnotified
+     * @param res Inject software resources
+     */
+    public static void injectModuleResources(Resources res) {
+        if (res == null) {
+            return;
+        }
+        try {
+            res.getString(R.string.res_inject_success);
+            return;
+        } catch (Resources.NotFoundException ignored) {
+        }
+        try {
+            String sModulePath = modulePath;
+            if (sModulePath == null) {
+                throw new RuntimeException(
+                        "get module path failed, loader=" + GodModeInjector.class.getClassLoader());
+            }
+            AssetManager assets = res.getAssets();
+            @SuppressLint("DiscouragedPrivateApi")
+            Method addAssetPath = AssetManager.class
+                    .getDeclaredMethod("addAssetPath", String.class);
+            addAssetPath.setAccessible(true);
+            int cookie = (int) addAssetPath.invoke(assets, sModulePath);
+            try {
+                Logger.i(TAG, "injectModuleResources: " + res.getString(R.string.res_inject_success));
+            } catch (Resources.NotFoundException e) {
+                Logger.e(TAG, "Fatal: injectModuleResources: test injection failure!");
+                Logger.e(TAG, "injectModuleResources: cookie=" + cookie + ", path=" + sModulePath
+                        + ", loader=" + GodModeInjector.class.getClassLoader());
+                long length = -1;
+                boolean read = false;
+                boolean exist = false;
+                boolean isDir = false;
+                try {
+                    File f = new File(sModulePath);
+                    exist = f.exists();
+                    isDir = f.isDirectory();
+                    length = f.length();
+                    read = f.canRead();
+                } catch (Throwable e2) {
+                    Logger.eAndTr(TAG, e2);
+                }
+                Logger.e(TAG, "sModulePath: exists = " + exist + ", isDirectory = " + isDir + ", canRead = "
+                        + read + ", fileLength = " + length);
+            }
+        } catch (Exception e) {
+            Logger.eAndTr(TAG, e);
         }
     }
 

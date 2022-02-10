@@ -97,5 +97,6 @@
     <string name="pref_key_detail_view_description" translatable="false">view_description</string>
     <string name="pref_key_detail_view_visible" translatable="false">view_visibility</string>
     <string name="pref_key_detail_preview_image" translatable="false">preview_image</string>
+    <string name="res_inject_success" translatable="false">Resources injection success</string>
 
 </resources>

@@ -19,6 +19,9 @@ android {
     }
     productFlavors {
     }
+    androidResources {
+        additionalParameters("--allow-reserved-package-id", "--package-id", "0x95")
+    }
 }
 
 repositories {

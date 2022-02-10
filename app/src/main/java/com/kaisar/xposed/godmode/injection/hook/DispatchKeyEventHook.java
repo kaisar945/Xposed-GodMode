@@ -26,7 +26,6 @@ import com.kaisar.xposed.godmode.injection.GodModeInjector;
 import com.kaisar.xposed.godmode.injection.ViewController;
 import com.kaisar.xposed.godmode.injection.ViewHelper;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.injection.util.GmLayoutInflater;
 import com.kaisar.xposed.godmode.injection.util.GmResources;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.injection.util.Property;
@@ -102,99 +101,81 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
         mMaskView.setMaskOverlay(OVERLAY_COLOR);
         mMaskView.attachToContainer(container);
         try {
-            LayoutInflater layoutInflater = GmLayoutInflater.from(activity);
-            mNodeSelectorPanel = layoutInflater.inflate(R.layout.layout_node_selector, container, false);
+            GodModeInjector.injectModuleResources(activity.getResources());
+            LayoutInflater layoutInflater = LayoutInflater.from(activity);
+            mNodeSelectorPanel = layoutInflater.inflate(GodModeInjector.moduleRes.getLayout(R.layout.layout_node_selector), container, false);
             seekbar = mNodeSelectorPanel.findViewById(R.id.slider);
             seekbar.setMax(mViewNodes.size() - 1);
             seekbar.setOnSeekBarChangeListener(this);
             View btnBlock = mNodeSelectorPanel.findViewById(R.id.block);
             TooltipCompat.setTooltipText(btnBlock, GmResources.getText(R.string.accessibility_block));
-            btnBlock.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    try {
-                        mNodeSelectorPanel.setAlpha(0f);
-                        final View view = mViewNodes.get(mCurrentViewIndex).get();
-                        Logger.d(TAG, "removed view = " + view);
-                        if (view != null) {
-                            //hide overlay
-                            mMaskView.updateOverlayBounds(new Rect());
-                            final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
-                            final ViewRule viewRule = ViewHelper.makeRule(view);
-                            final ParticleView particleView = new ParticleView(activity);
-                            particleView.setDuration(1000);
-                            particleView.attachToContainer(container);
-                            particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
-                                @Override
-                                public void onAnimationStart(View animView, Animator animation) {
-                                    viewRule.visibility = View.GONE;
-                                    ViewController.applyRule(view, viewRule);
-                                }
+            btnBlock.setOnClickListener(v -> {
+                try {
+                    mNodeSelectorPanel.setAlpha(0f);
+                    final View view = mViewNodes.get(mCurrentViewIndex).get();
+                    Logger.d(TAG, "removed view = " + view);
+                    if (view != null) {
+                        //hide overlay
+                        mMaskView.updateOverlayBounds(new Rect());
+                        final Bitmap snapshot = ViewHelper.snapshotView(ViewHelper.findTopParentViewByChildView(view));
+                        final ViewRule viewRule = ViewHelper.makeRule(view);
+                        final ParticleView particleView = new ParticleView(activity);
+                        particleView.setDuration(1000);
+                        particleView.attachToContainer(container);
+                        particleView.setOnAnimationListener(new ParticleView.OnAnimationListener() {
+                            @Override
+                            public void onAnimationStart(View animView, Animator animation) {
+                                viewRule.visibility = View.GONE;
+                                ViewController.applyRule(view, viewRule);
+                            }
 
-                                @Override
-                                public void onAnimationEnd(View animView, Animator animation) {
-                                    GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
-                                    recycleNullableBitmap(snapshot);
-                                    particleView.detachFromContainer();
-                                    mNodeSelectorPanel.animate()
-                                            .alpha(1.0f)
-                                            .setInterpolator(new DecelerateInterpolator(1.0f))
-                                            .setDuration(300)
-                                            .start();
-                                }
-                            });
-                            particleView.boom(view);
-                        }
-                        mViewNodes.remove(mCurrentViewIndex--);
-                        seekbar.setMax(mViewNodes.size() - 1);
-                    } catch (Exception e) {
-                        Logger.e(TAG, "block fail", e);
-                        Toast.makeText(activity, GmResources.getString(R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
+                            @Override
+                            public void onAnimationEnd(View animView, Animator animation) {
+                                GodModeManager.getDefault().writeRule(activity.getPackageName(), viewRule, snapshot);
+                                recycleNullableBitmap(snapshot);
+                                particleView.detachFromContainer();
+                                mNodeSelectorPanel.animate()
+                                        .alpha(1.0f)
+                                        .setInterpolator(new DecelerateInterpolator(1.0f))
+                                        .setDuration(300)
+                                        .start();
+                            }
+                        });
+                        particleView.boom(view);
                     }
+                    mViewNodes.remove(mCurrentViewIndex--);
+                    seekbar.setMax(mViewNodes.size() - 1);
+                } catch (Exception e) {
+                    Logger.e(TAG, "block fail", e);
+                    Toast.makeText(activity, GmResources.getString(R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
                 }
             });
             View exchange = mNodeSelectorPanel.findViewById(R.id.exchange);
             View topcentent = mNodeSelectorPanel.findViewById(R.id.topcentent);
-            exchange.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Display display = activity.getWindowManager().getDefaultDisplay();
-                    int width = display.getWidth();
-                    int Targetwidth = width - (width / 6);
-                    if (topcentent.getPaddingRight() == Targetwidth) {
-                        topcentent.setPadding(4, 4, 12, 4);
-                    } else {
-                        topcentent.setPadding(4, 4, Targetwidth, 4);
-                    }
+            exchange.setOnClickListener(v -> {
+                Display display = activity.getWindowManager().getDefaultDisplay();
+                int width = display.getWidth();
+                int Targetwidth = width - (width / 6);
+                if (topcentent.getPaddingRight() == Targetwidth) {
+                    topcentent.setPadding(4, 4, 12, 4);
+                } else {
+                    topcentent.setPadding(4, 4, Targetwidth, 4);
                 }
             });
             View btnUp = mNodeSelectorPanel.findViewById(R.id.Up);
-            btnUp.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    seekbaradd();
-                }
-            });
+            btnUp.setOnClickListener(v -> seekbaradd());
             View btnDown = mNodeSelectorPanel.findViewById(R.id.Down);
-            btnDown.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    seekbarreduce();
-                }
-            });
+            btnDown.setOnClickListener(v -> seekbarreduce());
             container.addView(mNodeSelectorPanel);
             mNodeSelectorPanel.setAlpha(0);
-            mNodeSelectorPanel.post(new Runnable() {
-                @Override
-                public void run() {
-                    mNodeSelectorPanel.setTranslationX(mNodeSelectorPanel.getWidth() / 2.0f);
-                    mNodeSelectorPanel.animate()
-                            .alpha(1)
-                            .translationX(0)
-                            .setDuration(300)
-                            .setInterpolator(new DecelerateInterpolator(1.0f))
-                            .start();
-                }
+            mNodeSelectorPanel.post(() -> {
+                mNodeSelectorPanel.setTranslationX(mNodeSelectorPanel.getWidth() / 2.0f);
+                mNodeSelectorPanel.animate()
+                        .alpha(1)
+                        .translationX(0)
+                        .setDuration(300)
+                        .setInterpolator(new DecelerateInterpolator(1.0f))
+                        .start();
             });
             mKeySelecting = true;
             XposedHelpers.findAndHookMethod(Activity.class, "dispatchKeyEvent", KeyEvent.class, new XC_MethodHook() {
@@ -238,7 +219,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
     }
 
     private void dismissNodeSelectPanel() {
-        mMaskView.detachFromContainer();
+        if (mMaskView != null) mMaskView.detachFromContainer();
         mMaskView = null;
         if (mNodeSelectorPanel != null) {
             final View nodeSelectorPanel = mNodeSelectorPanel;
@@ -247,12 +228,9 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                     .translationX(nodeSelectorPanel.getWidth() / 2.0f)
                     .setDuration(250)
                     .setInterpolator(new AccelerateInterpolator(1.0f))
-                    .withEndAction(new Runnable() {
-                        @Override
-                        public void run() {
-                            ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
-                            if (parent != null) parent.removeView(nodeSelectorPanel);
-                        }
+                    .withEndAction(() -> {
+                        ViewGroup parent = (ViewGroup) nodeSelectorPanel.getParent();
+                        if (parent != null) parent.removeView(nodeSelectorPanel);
                     })
                     .start());
         }
