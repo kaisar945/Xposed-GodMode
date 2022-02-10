@@ -35,7 +35,6 @@ import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -56,13 +55,13 @@ import java.util.Map;
 
 public final class GodModeManagerService extends IGodModeManager.Stub implements Handler.Callback {
 
-    // /data/godmode
-    private static final String BASE_DIR = String.format("%s/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
-    // /data/godmode/conf
+    // /data/system/godmode
+    private static final String BASE_DIR = String.format("%s/system/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
+    // /data/system/godmode/conf
     private static final String CONFIG_FILE_NAME = "conf";
-    // /data/godmode/{package}/package.rule
+    // /data/system/godmode/{package}/package.rule
     private static final String RULE_FILE_SUFFIX = ".rule";
-    // /data/godmode/{package}/xxxxxxxxx.webp
+    // /data/system/godmode/{package}/xxxxxxxxx.webp
     private static final String IMAGE_FILE_SUFFIX = ".webp";
 
     private static final int WRITE_RULE = 0x00002;
@@ -89,18 +88,13 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             mStarted = true;
         } catch (Exception e) {
             mStarted = false;
-            mLogger.e("loadPreferenceData failed", e);
+            mLogger.e("loadPreferenceData failed " + BASE_DIR, e);
         }
     }
 
     private void loadRuleData() throws IOException {
         File dataDir = new File(getBaseDir());
-        File[] packageDirs = dataDir.listFiles(new FileFilter() {
-            @Override
-            public boolean accept(File pathname) {
-                return pathname.isDirectory();
-            }
-        });
+        File[] packageDirs = dataDir.listFiles(File::isDirectory);
         if (packageDirs != null && packageDirs.length > 0) {
             HashMap<String, ActRules> appRules = new HashMap<>();
             for (File packageDir : packageDirs) {
@@ -222,8 +216,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
         throw new RemoteException(message);
     }
 
-    private void enforcePermission(@NonNull String permPackage, String message) throws RemoteException {
-        if (!checkPermission(permPackage)) {
+    private void enforcePermission(String message) throws RemoteException {
+        if (!checkPermission(BuildConfig.APPLICATION_ID)) {
             throw new RemoteException(message);
         }
     }
@@ -240,7 +234,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public void setEditMode(boolean enable) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "set edit mode fail permission denied");
+        enforcePermission("set edit mode fail permission denied");
         if (!mStarted) return;
         mInEditMode = enable;
         notifyObserverEditModeChanged(enable);
@@ -294,7 +288,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public AppRules getAllRules() throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "get all rules fail permission denied");
+        enforcePermission("get all rules fail permission denied");
         if (!mStarted) return new AppRules();
         return mAppRulesCache;
     }
@@ -350,7 +344,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean updateRule(String packageName, ViewRule viewRule) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "update rule fail permission denied");
+        enforcePermission("update rule fail permission denied");
         if (!mStarted) return false;
         try {
             ActRules actRules = mAppRulesCache.get(packageName);
@@ -384,7 +378,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean deleteRule(String packageName, ViewRule viewRule) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "delete rule fail permission denied");
+        enforcePermission("delete rule fail permission denied");
         if (!mStarted) return false;
         try {
             ActRules actRules = Preconditions.checkNotNull(mAppRulesCache.get(packageName), "not found this rule can't delete.");
@@ -414,7 +408,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
      */
     @Override
     public boolean deleteRules(String packageName) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "delete rules fail permission denied");
+        enforcePermission("delete rules fail permission denied");
         if (!mStarted) return false;
         mLogger.d("delete rules pkg=" + packageName + " cache=" + mAppRulesCache);
         if (mAppRulesCache.containsKey(packageName)) {
@@ -427,7 +421,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
 
     @Override
     public ParcelFileDescriptor openImageFileDescriptor(String filePath) throws RemoteException {
-        enforcePermission(BuildConfig.APPLICATION_ID, "open fd fail permission denied");
+        enforcePermission("open fd fail permission denied");
         if (!filePath.startsWith(BASE_DIR) || !filePath.endsWith(IMAGE_FILE_SUFFIX))
             throw new RemoteException(String.format("unauthorized access %s", filePath));
         try {
@@ -487,6 +481,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     private String getBaseDir() throws FileNotFoundException {
+        mLogger.d(BASE_DIR);
         File dir = new File(BASE_DIR);
         if (dir.exists() || dir.mkdirs()) {
             FileUtils.setPermissions(dir, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
