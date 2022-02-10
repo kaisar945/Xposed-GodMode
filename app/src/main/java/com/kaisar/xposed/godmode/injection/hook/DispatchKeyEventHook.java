@@ -16,7 +16,6 @@ import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
 
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
@@ -109,7 +108,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
             seekbar.setMax(mViewNodes.size() - 1);
             seekbar.setOnSeekBarChangeListener(this);
             View btnBlock = mNodeSelectorPanel.findViewById(R.id.block);
-            TooltipCompat.setTooltipText(btnBlock, GmResources.getText(activity, R.string.accessibility_block));
+            TooltipCompat.setTooltipText(btnBlock, GmResources.getText(R.string.accessibility_block));
             btnBlock.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -150,7 +149,7 @@ public final class DispatchKeyEventHook extends XC_MethodHook implements Propert
                         seekbar.setMax(mViewNodes.size() - 1);
                     } catch (Exception e) {
                         Logger.e(TAG, "block fail", e);
-                        Toast.makeText(activity, GmResources.getString(activity, R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, GmResources.getString(R.string.block_fail, e.getMessage()), Toast.LENGTH_SHORT).show();
                     }
                 }
             });

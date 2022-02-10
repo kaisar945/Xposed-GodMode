@@ -8,6 +8,8 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Resources;
+import android.content.res.XModuleResources;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
@@ -31,6 +33,7 @@ import com.kaisar.xservicemanager.XServiceManager;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -39,7 +42,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
  * Created by jrsen on 17-10-13.
  */
 
-public final class GodModeInjector implements IXposedHookLoadPackage {
+public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
     public final static Property<Boolean> switchProp = new Property<>();
     public final static Property<ActRules> actRuleProp = new Property<>();
@@ -65,6 +68,16 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
 
     public static void notifyViewRulesChanged(ActRules actRules) {
         actRuleProp.set(actRules);
+    }
+
+    private static String modulePath;
+    public static Resources moduleRes;
+
+    // Injector Res
+    @Override
+    public void initZygote(StartupParam startupParam) {
+        modulePath = startupParam.modulePath;
+        moduleRes = XModuleResources.createInstance(modulePath, null);
     }
 
     @Override
