@@ -6,6 +6,7 @@ import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullab
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.ParcelFileDescriptor;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.kaisar.xposed.godmode.GodModeApplication;
@@ -70,12 +71,12 @@ public final class LocalRepository {
         // Write manifest config
         try {
             File manifestFile = new File(savePath, MANIFEST);
-            FileUtils.stringToFile(manifestFile, new JSONArray(viewRuleList).toString());
+            FileUtils.stringToFile(manifestFile, new Gson().toJson(viewRuleList));
             filePathList.add(manifestFile.getPath());
             SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US);
-            ViewRule viewRule = viewRules.get(0);
-            String filename = String.format("%s(%s)-%s%s", viewRule.label, viewRule.matchVersionName, sdf.format(new Date()), PACK_SUFFIX);
+            String filename = sdf.format(new Date());
             String zipFile = new File(savePath, filename).getAbsolutePath();
+            GodModeApplication.thisBackupFilePath = zipFile;
             return ZipUtils.compress(zipFile, filePathList.toArray(new String[0]));
         } catch (IOException e) {
             Logger.e(TAG, "Write manifest file fail", e);

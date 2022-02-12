@@ -11,6 +11,7 @@ public final class GodModeApplication extends Application {
 
     public static final String TAG = "GodMode";
     private static GodModeApplication sApplication;
+    public static String thisBackupFilePath = "";
 
     public GodModeApplication() {
         sApplication = this;
