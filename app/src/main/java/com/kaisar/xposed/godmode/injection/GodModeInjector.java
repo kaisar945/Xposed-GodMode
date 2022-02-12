@@ -172,13 +172,13 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
                     length = f.length();
                     read = f.canRead();
                 } catch (Throwable e2) {
-                    Logger.eAndTr(TAG, e2);
+                    Logger.e(TAG, "Open module error", e2);
                 }
                 Logger.e(TAG, "sModulePath: exists = " + exist + ", isDirectory = " + isDir + ", canRead = "
                         + read + ", fileLength = " + length);
             }
         } catch (Exception e) {
-            Logger.eAndTr(TAG, e);
+            Logger.e(TAG, "Inject module resources error", e);
         }
     }
 
@@ -259,7 +259,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
                 switchProp.addOnPropertyChangeListener(displayPropertiesHook);
                 XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
             }
-            
+
             //Disable show layout margin bound
             XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
 
