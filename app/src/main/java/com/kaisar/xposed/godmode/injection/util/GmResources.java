@@ -1,60 +1,54 @@
 package com.kaisar.xposed.godmode.injection.util;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 
-import com.kaisar.xposed.godmode.BuildConfig;
+import com.kaisar.xposed.godmode.injection.GodModeInjector;
 
 public class GmResources {
 
-    private static Resources GMResources;
-
-    private static Resources getGmResource(Context context) throws PackageManager.NameNotFoundException {
-        if (GMResources == null) {
-            GMResources = context.createPackageContext(BuildConfig.APPLICATION_ID, 0).getResources();
-        }
-        return GMResources;
+    private static Resources getGmResource() throws PackageManager.NameNotFoundException {
+        return GodModeInjector.moduleRes;
     }
 
-    public static int getColor(Context context, int id) throws Resources.NotFoundException {
+    public static int getColor(int id) throws Resources.NotFoundException {
         try {
-            return getGmResource(context).getColor(id);
+            return getGmResource().getColor(id);
         } catch (PackageManager.NameNotFoundException e) {
             throw new Resources.NotFoundException("get resources fail GodMode package may be not installed?");
         }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables")
-    public static Drawable getDrawable(Context context, int id) throws Resources.NotFoundException {
+    public static Drawable getDrawable(int id) throws Resources.NotFoundException {
         try {
-            return getGmResource(context).getDrawable(id);
+            return getGmResource().getDrawable(id);
         } catch (PackageManager.NameNotFoundException e) {
             throw new Resources.NotFoundException("get resources fail GodMode package may be not installed?");
         }
     }
 
-    public static CharSequence getText(Context context, int id) throws Resources.NotFoundException {
+    public static CharSequence getText(int id) throws Resources.NotFoundException {
         try {
-            return getGmResource(context).getText(id);
+            return getGmResource().getText(id);
         } catch (PackageManager.NameNotFoundException e) {
             throw new Resources.NotFoundException("get resources fail GodMode package may be not installed?");
         }
     }
 
-    public static String getString(Context context, int id) throws Resources.NotFoundException {
+    public static String getString(int id) throws Resources.NotFoundException {
         try {
-            return getGmResource(context).getString(id);
+            return getGmResource().getString(id);
         } catch (PackageManager.NameNotFoundException e) {
             throw new Resources.NotFoundException("get resources fail GodMode package may be not installed?");
         }
     }
 
-    public static String getString(Context context, int id, Object... formatArgs) throws Resources.NotFoundException {
+    public static String getString(int id, Object... formatArgs) throws Resources.NotFoundException {
         try {
-            return getGmResource(context).getString(id, formatArgs);
+            return getGmResource().getString(id, formatArgs);
         } catch (PackageManager.NameNotFoundException e) {
             throw new Resources.NotFoundException("get resources fail GodMode package may be not installed?");
         }

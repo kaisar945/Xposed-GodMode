@@ -2,28 +2,30 @@ package com.kaisar.xposed.godmode.injection;
 
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.graphics.Canvas;
-import android.graphics.Paint;
+import android.content.res.AssetManager;
+import android.content.res.Resources;
+import android.content.res.XModuleResources;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
 
+import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.injection.bridge.ManagerObserver;
 import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
 import com.kaisar.xposed.godmode.injection.hook.DispatchKeyEventHook;
 import com.kaisar.xposed.godmode.injection.hook.DisplayPropertiesHook;
 import com.kaisar.xposed.godmode.injection.hook.EventHandlerHook;
-import com.kaisar.xposed.godmode.injection.hook.SystemPropertiesHook;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.injection.util.PackageManagerUtils;
 import com.kaisar.xposed.godmode.injection.util.Property;
@@ -31,11 +33,15 @@ import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.service.GodModeManagerService;
 import com.kaisar.xservicemanager.XServiceManager;
 
+import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
+import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
@@ -43,7 +49,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage;
  * Created by jrsen on 17-10-13.
  */
 
-public final class GodModeInjector implements IXposedHookLoadPackage {
+public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHookZygoteInit {
 
     public final static Property<Boolean> switchProp = new Property<>();
     public final static Property<ActRules> actRuleProp = new Property<>();
@@ -71,8 +77,22 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         actRuleProp.set(actRules);
     }
 
+    private static String modulePath;
+    public static Resources moduleRes;
+
+    // Injector Res
+    @Override
+    public void initZygote(StartupParam startupParam) {
+        modulePath = startupParam.modulePath;
+        moduleRes = XModuleResources.createInstance(modulePath, null);
+    }
+
     @Override
     public void handleLoadPackage(XC_LoadPackage.LoadPackageParam loadPackageParam) {
+        if (R.string.res_inject_success >>> 24 == 0x7f) {
+            XposedBridge.log("package id must NOT be 0x7f, reject loading...");
+            return;
+        }
         if (!loadPackageParam.isFirstApplication) {
             return;
         }
@@ -87,7 +107,9 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     //Volume key select old
-                    dispatchKeyEventHook.setactivity((Activity) param.thisObject);
+                    Activity activity = (Activity) param.thisObject;
+                    dispatchKeyEventHook.setactivity(activity);
+                    injectModuleResources(activity.getResources());
                     super.afterHookedMethod(param);
                 }
             });
@@ -96,6 +118,58 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
             gmManager.addObserver(loadPackageParam.packageName, new ManagerObserver());
             switchProp.set(gmManager.isInEditMode());
             actRuleProp.set(gmManager.getRules(loadPackageParam.packageName));
+        }
+    }
+
+    /**
+     * Inject resources into hook software - Code from qnotified
+     * @param res Inject software resources
+     */
+    public static void injectModuleResources(Resources res) {
+        if (res == null) {
+            return;
+        }
+        try {
+            res.getString(R.string.res_inject_success);
+            return;
+        } catch (Resources.NotFoundException ignored) {
+        }
+        try {
+            String sModulePath = modulePath;
+            if (sModulePath == null) {
+                throw new RuntimeException(
+                        "get module path failed, loader=" + GodModeInjector.class.getClassLoader());
+            }
+            AssetManager assets = res.getAssets();
+            @SuppressLint("DiscouragedPrivateApi")
+            Method addAssetPath = AssetManager.class
+                    .getDeclaredMethod("addAssetPath", String.class);
+            addAssetPath.setAccessible(true);
+            int cookie = (int) addAssetPath.invoke(assets, sModulePath);
+            try {
+                Logger.i(TAG, "injectModuleResources: " + res.getString(R.string.res_inject_success));
+            } catch (Resources.NotFoundException e) {
+                Logger.e(TAG, "Fatal: injectModuleResources: test injection failure!");
+                Logger.e(TAG, "injectModuleResources: cookie=" + cookie + ", path=" + sModulePath
+                        + ", loader=" + GodModeInjector.class.getClassLoader());
+                long length = -1;
+                boolean read = false;
+                boolean exist = false;
+                boolean isDir = false;
+                try {
+                    File f = new File(sModulePath);
+                    exist = f.exists();
+                    isDir = f.isDirectory();
+                    length = f.length();
+                    read = f.canRead();
+                } catch (Throwable e2) {
+                    Logger.eAndTr(TAG, e2);
+                }
+                Logger.e(TAG, "sModulePath: exists = " + exist + ", isDirectory = " + isDir + ", canRead = "
+                        + read + ", fileLength = " + length);
+            }
+        } catch (Exception e) {
+            Logger.eAndTr(TAG, e);
         }
     }
 
@@ -157,32 +231,9 @@ public final class GodModeInjector implements IXposedHookLoadPackage {
         XposedHelpers.findAndHookMethod(Activity.class, "onPostResume", lifecycleHook);
         XposedHelpers.findAndHookMethod(Activity.class, "onDestroy", lifecycleHook);
 
-        //hook debug layout
-        if (Build.VERSION.SDK_INT < 29) {
-            SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
-            switchProp.addOnPropertyChangeListener(systemPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "native_get_boolean", String.class, boolean.class, systemPropertiesHook);
-        } else {
-            DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
-            switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-            XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
-        }
-
-        //Disable show layout margin bound
-        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
-
-        //Disable GM component show layout bounds
-        XC_MethodHook disableDebugDraw = new XC_MethodHook() {
-            @Override
-            protected void beforeHookedMethod(MethodHookParam param) {
-                View view = (View) param.thisObject;
-                if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
-                    param.setResult(null);
-                }
-            }
-        };
-        XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
-        XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
+        DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+        switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+        XposedHelpers.findAndHookConstructor(View.class, Context.class, displayPropertiesHook);
 
         EventHandlerHook eventHandlerHook = new EventHandlerHook();
         switchProp.addOnPropertyChangeListener(eventHandlerHook);
