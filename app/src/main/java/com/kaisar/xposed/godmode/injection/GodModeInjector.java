@@ -244,9 +244,8 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
 //        switchProp.addOnPropertyChangeListener(displayPropertiesHook);
 //        XposedHelpers.findAndHookConstructor(View.class, Context.class, displayPropertiesHook);
 
+        // Hook debug layout
         try {
-
-
             if (Build.VERSION.SDK_INT < 29) {
                 SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
                 switchProp.addOnPropertyChangeListener(systemPropertiesHook);
@@ -260,6 +259,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
                 switchProp.addOnPropertyChangeListener(displayPropertiesHook);
                 XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
             }
+            
             //Disable show layout margin bound
             XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
 
@@ -276,7 +276,7 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
             XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
             XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
         } catch (Throwable e) {
-            Logger.eAndTr(TAG, e);
+            Logger.e(TAG, "Hook debug layout error", e);
         }
 
 
