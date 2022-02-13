@@ -91,10 +91,6 @@ public final class Logger {
         if (isLoggable(TAG, Log.ERROR)) e(mName, String.format("[%s] %s", mName, message), tr);
     }
 
-    public static void eAndTr(String tag, Throwable tr) {
-        if (isLoggable(TAG, Log.ERROR)) e(tag, String.format("[%s]", tag), tr);
-    }
-
     public static Logger getLogger(String name) {
         return new Logger(name);
     }

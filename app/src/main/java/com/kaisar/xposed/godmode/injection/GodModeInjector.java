@@ -12,12 +12,17 @@ import android.content.pm.ResolveInfo;
 import android.content.res.AssetManager;
 import android.content.res.Resources;
 import android.content.res.XModuleResources;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+
+import androidx.annotation.RequiresApi;
 
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
@@ -26,6 +31,8 @@ import com.kaisar.xposed.godmode.injection.hook.ActivityLifecycleHook;
 import com.kaisar.xposed.godmode.injection.hook.DispatchKeyEventHook;
 import com.kaisar.xposed.godmode.injection.hook.DisplayPropertiesHook;
 import com.kaisar.xposed.godmode.injection.hook.EventHandlerHook;
+import com.kaisar.xposed.godmode.injection.hook.SystemPropertiesHook;
+import com.kaisar.xposed.godmode.injection.hook.SystemPropertiesStringHook;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.injection.util.PackageManagerUtils;
 import com.kaisar.xposed.godmode.injection.util.Property;
@@ -37,10 +44,12 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
@@ -163,13 +172,13 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
                     length = f.length();
                     read = f.canRead();
                 } catch (Throwable e2) {
-                    Logger.eAndTr(TAG, e2);
+                    Logger.e(TAG, "Open module error", e2);
                 }
                 Logger.e(TAG, "sModulePath: exists = " + exist + ", isDirectory = " + isDir + ", canRead = "
                         + read + ", fileLength = " + length);
             }
         } catch (Exception e) {
-            Logger.eAndTr(TAG, e);
+            Logger.e(TAG, "Inject module resources error", e);
         }
     }
 
@@ -231,9 +240,45 @@ public final class GodModeInjector implements IXposedHookLoadPackage, IXposedHoo
         XposedHelpers.findAndHookMethod(Activity.class, "onPostResume", lifecycleHook);
         XposedHelpers.findAndHookMethod(Activity.class, "onDestroy", lifecycleHook);
 
-        DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
-        switchProp.addOnPropertyChangeListener(displayPropertiesHook);
-        XposedHelpers.findAndHookConstructor(View.class, Context.class, displayPropertiesHook);
+//        DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+//        switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+//        XposedHelpers.findAndHookConstructor(View.class, Context.class, displayPropertiesHook);
+
+        // Hook debug layout
+        try {
+            if (Build.VERSION.SDK_INT < 29) {
+                SystemPropertiesHook systemPropertiesHook = new SystemPropertiesHook();
+                switchProp.addOnPropertyChangeListener(systemPropertiesHook);
+                XposedHelpers.findAndHookMethod("android.os.SystemProperties", ClassLoader.getSystemClassLoader(), "native_get_boolean", String.class, boolean.class, systemPropertiesHook);
+            } else {
+                SystemPropertiesStringHook systemPropertiesStringHook = new SystemPropertiesStringHook();
+                switchProp.addOnPropertyChangeListener(systemPropertiesStringHook);
+                XposedBridge.hookAllMethods(XposedHelpers.findClass("android.os.SystemProperties", ClassLoader.getSystemClassLoader()), "native_get", systemPropertiesStringHook);
+
+                DisplayPropertiesHook displayPropertiesHook = new DisplayPropertiesHook();
+                switchProp.addOnPropertyChangeListener(displayPropertiesHook);
+                XposedHelpers.findAndHookMethod("android.sysprop.DisplayProperties", ClassLoader.getSystemClassLoader(), "debug_layout", displayPropertiesHook);
+            }
+
+            //Disable show layout margin bound
+            XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDrawMargins", Canvas.class, Paint.class, XC_MethodReplacement.DO_NOTHING);
+
+            //Disable GM component show layout bounds
+            XC_MethodHook disableDebugDraw = new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) {
+                    View view = (View) param.thisObject;
+                    if (ViewHelper.TAG_GM_CMP.equals(view.getTag())) {
+                        param.setResult(null);
+                    }
+                }
+            };
+            XposedHelpers.findAndHookMethod(ViewGroup.class, "onDebugDraw", Canvas.class, disableDebugDraw);
+            XposedHelpers.findAndHookMethod(View.class, "debugDrawFocus", Canvas.class, disableDebugDraw);
+        } catch (Throwable e) {
+            Logger.e(TAG, "Hook debug layout error", e);
+        }
+
 
         EventHandlerHook eventHandlerHook = new EventHandlerHook();
         switchProp.addOnPropertyChangeListener(eventHandlerHook);

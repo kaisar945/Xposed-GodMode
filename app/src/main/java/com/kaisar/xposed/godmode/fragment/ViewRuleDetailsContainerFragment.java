@@ -1,7 +1,10 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -21,11 +24,20 @@ import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback;
 
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
+import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
+import com.kaisar.xposed.godmode.util.SafHelper;
+import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.io.File;
+import java.io.OutputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCompat {
 
@@ -133,19 +145,14 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
                 mSharedViewModel.deleteRule(viewRule);
                 requireActivity().onBackPressed();
             }
-//        else if (item.getItemId() == R.id.menu_export) {
-//            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
-//            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-//                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
-//                return true;
-//            }
-//            File externalStoragePublicDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-//            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
-//            String date = simpleDateFormat.format(new Date());
-//            File file = new File(externalStoragePublicDirectory, String.format("GodMode-Rules-%s.gzip", date));
-//            boolean ok = LocalRepository.exportRules(file.getPath(), viewRules);
-//            Snackbar.make(requireActivity(), ok ? getString(R.string.export_successful, file.getPath()) : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
-//        }
+            else if (item.getItemId() == R.id.menu_export) {
+                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
+                String date = simpleDateFormat.format(new Date());
+                ViewRule mViewRule = viewRules.get(0);
+                SafHelper.saveFile(requireActivity(), String.format("GodMode-Rules-%s", String.format("%s(%s)-%s", mViewRule.label, mViewRule.matchVersionName, date)), 114514);
+                File cacheDir = requireActivity().getExternalCacheDir();
+                LocalRepository.exportRules(cacheDir.getPath(), viewRules);
+            }
         }
         return true;
     }
