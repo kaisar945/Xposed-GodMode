@@ -1,5 +1,6 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.text.SpannableString;
@@ -18,8 +19,10 @@ import android.widget.TextView;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -27,7 +30,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.kaisar.xposed.godmode.R;
-import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
@@ -35,6 +37,7 @@ import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Created by jrsen on 17-10-29.
@@ -43,24 +46,9 @@ import java.util.List;
 public final class ViewRuleListFragment extends Fragment {
 
     private Drawable mIcon;
-    private CharSequence mLabel;
-    private CharSequence mPackageName;
-
+    private String mPackageName;
     private RecyclerView mRecyclerView;
-
     private SharedViewModel mSharedViewModel;
-
-    public void setIcon(Drawable icon) {
-        mIcon = icon;
-    }
-
-    public void setLabel(CharSequence label) {
-        mLabel = label;
-    }
-
-    public void setPackageName(CharSequence packageName) {
-        mPackageName = packageName;
-    }
 
     public ViewRuleListFragment() {
         super(R.layout.list_fragment_layout);
@@ -71,10 +59,18 @@ public final class ViewRuleListFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mPackageName = mSharedViewModel.mSelectedPackage.getValue();
+        Objects.requireNonNull(mPackageName, "mSelectedPackage should not be null.");
+        try {
+            PackageManager packageManager = requireContext().getPackageManager();
+            mIcon = packageManager.getApplicationIcon(mPackageName);
+        } catch (PackageManager.NameNotFoundException e) {
+            mIcon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+        }
         mSharedViewModel.mSelectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
         mSharedViewModel.mActRules.observe(this, newData -> {
             if (newData.isEmpty()) {
-                requireActivity().onBackPressed();
+                NavHostFragment.findNavController(this).popBackStack();
             } else {
                 ListAdapter adapter = (ListAdapter) mRecyclerView.getAdapter();
                 if (adapter != null) {
@@ -158,7 +154,7 @@ public final class ViewRuleListFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             ViewRule viewRule = mData.get(position);
-            Glide.with(ViewRuleListFragment.this).load(viewRule).placeholder(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.mImageView);
+            Glide.with(ViewRuleListFragment.this).load(viewRule).error(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.mImageView);
             if (viewRule.activityClass != null && viewRule.activityClass.lastIndexOf('.') > -1) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
                 holder.mTitleTextView.setText(getString(R.string.field_activity, activityName));
@@ -185,14 +181,8 @@ public final class ViewRuleListFragment extends Fragment {
 
         @Override
         public void onClick(View view) {
-            ViewRuleDetailsContainerFragment fragment = new ViewRuleDetailsContainerFragment();
-            int position = (Integer) view.getTag();
-            fragment.setCurIndex(position);
-            fragment.setIcon(mIcon);
-            fragment.setLabel(mLabel);
-            fragment.setPackageName(mPackageName);
-            SettingsActivity activity = (SettingsActivity) requireActivity();
-            activity.startPreferenceFragment(fragment);
+            final int position = (Integer) view.getTag();
+            NavHostFragment.findNavController(ViewRuleListFragment.this).navigate(ViewRuleListFragmentDirections.actionViewRuleListFragmentToViewRuleDetailsContainerFragment(position));
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
@@ -207,7 +197,6 @@ public final class ViewRuleListFragment extends Fragment {
                 mTitleTextView = itemView.findViewById(android.R.id.title);
                 mSummaryTextView = itemView.findViewById(android.R.id.summary);
             }
-
         }
     }
 

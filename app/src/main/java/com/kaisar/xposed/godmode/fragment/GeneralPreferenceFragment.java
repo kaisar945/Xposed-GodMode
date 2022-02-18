@@ -1,5 +1,7 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragmentDirections.*;
+
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.Context;
@@ -24,6 +26,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
@@ -34,7 +38,6 @@ import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.R;
-import com.kaisar.xposed.godmode.SettingsActivity;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.preference.ProgressPreference;
@@ -204,12 +207,8 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         } else {
             String packageName = preference.getSummary().toString();
             mSharedViewModel.updateSelectedPackage(packageName);
-            ViewRuleListFragment fragment = new ViewRuleListFragment();
-            fragment.setIcon(preference.getIcon());
-            fragment.setLabel(preference.getTitle());
-            fragment.setPackageName(preference.getSummary());
-            SettingsActivity activity = (SettingsActivity) requireActivity();
-            activity.startPreferenceFragment(fragment);
+            NavController navController = NavHostFragment.findNavController(this);
+            navController.navigate(actionGeneralPreferenceFragmentToViewRuleListFragment());
         }
         return true;
     }

@@ -37,8 +37,8 @@ public class SharedViewModel extends ViewModel {
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
     public final MutableLiveData<Integer> mTitle = new MutableLiveData<>();
     public final MutableLiveData<AppRules> mAppRules = new MutableLiveData<>();
-    public final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
     public final MutableLiveData<List<ViewRule>> mActRules = new MutableLiveData<>();
+    public final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
 
     public SharedViewModel() {
         LocalRepository.addObserver("*", new IObserver.Stub() {

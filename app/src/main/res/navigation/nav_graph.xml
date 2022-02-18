@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/nav_graph"
+        app:startDestination="@id/generalPreferenceFragment">
+
+    <fragment
+            android:id="@+id/generalPreferenceFragment"
+            android:name="com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment"
+            android:label="GeneralPreferenceFragment">
+        <action
+                android:id="@+id/action_generalPreferenceFragment_to_viewRuleListFragment"
+                app:destination="@id/viewRuleListFragment" />
+    </fragment>
+    <fragment
+            android:id="@+id/viewRuleListFragment"
+            android:name="com.kaisar.xposed.godmode.fragment.ViewRuleListFragment"
+            android:label="ViewRuleListFragment">
+        <action
+                android:id="@+id/action_viewRuleListFragment_to_viewRuleDetailsContainerFragment"
+                app:destination="@id/viewRuleDetailsContainerFragment" />
+    </fragment>
+    <fragment
+            android:id="@+id/viewRuleDetailsContainerFragment"
+            android:name="com.kaisar.xposed.godmode.fragment.ViewRuleDetailsContainerFragment"
+            android:label="ViewRuleDetailsContainerFragment">
+        <argument
+                android:name="curIndex"
+                app:argType="integer" />
+    </fragment>
+</navigation>

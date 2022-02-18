@@ -3,6 +3,8 @@ package com.kaisar.xposed.godmode.fragment;
 import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -16,6 +18,7 @@ import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.loader.app.LoaderManager;
 import androidx.loader.content.AsyncTaskLoader;
@@ -45,9 +48,6 @@ import java.util.Objects;
 
 public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat implements Preference.OnPreferenceChangeListener, LoaderManager.LoaderCallbacks<Bitmap> {
 
-    private Drawable mIcon;
-    private CharSequence mLabel;
-    private CharSequence mPackageName;
     private ViewRule mViewRule;
 
     private SharedViewModel mSharedViewModel;
@@ -55,36 +55,31 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
     private DropDownPreference mVisiblePreference;
     private ImageViewPreference mImagePreference;
 
-    public void setIcon(Drawable icon) {
-        mIcon = icon;
-    }
-
-    public void setLabel(CharSequence label) {
-        mLabel = label;
-    }
-
-    public void setPackageName(CharSequence packageName) {
-        mPackageName = packageName;
-    }
-
     public void setViewRule(ViewRule viewRule) {
         mViewRule = viewRule;
     }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-    }
-
+    
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         addPreferencesFromResource(R.xml.pref_rule_details);
 
+        mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        String packageName = mSharedViewModel.mSelectedPackage.getValue();
+        Objects.requireNonNull(packageName, "packageName should not be null.");
+        Drawable icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+        String label = packageName;
+        try {
+            PackageManager packageManager = requireContext().getPackageManager();
+            ApplicationInfo applicationInfo = packageManager.getApplicationInfo(packageName, 0);
+            icon = applicationInfo.loadIcon(packageManager);
+            label = applicationInfo.loadLabel(packageManager).toString();
+        } catch (PackageManager.NameNotFoundException ignored) {
+//            ignored.printStackTrace();
+        }
         Preference headerPreference = findPreference(getString(R.string.pref_key_detail_rule_info));
-        headerPreference.setIcon(mIcon);
-        headerPreference.setTitle(mLabel);
-        headerPreference.setSummary(mPackageName);
+        headerPreference.setIcon(icon);
+        headerPreference.setTitle(label);
+        headerPreference.setSummary(packageName);
 
         Preference preference = findPreference(getString(R.string.pref_key_detail_rule_created_time));
         preference.setTitle(R.string.rule_details_field_create_time);
@@ -93,7 +88,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
 
         preference = findPreference(getString(R.string.pref_key_detail_rule_match_version));
         preference.setTitle(R.string.rule_details_field_generate_version);
-        preference.setSummary(String.format(Locale.getDefault(), "%s %s", mLabel, mViewRule.matchVersionName));
+        preference.setSummary(String.format(Locale.getDefault(), "%s %s", label, mViewRule.matchVersionName));
 
         preference = findPreference(getString(R.string.pref_key_detail_rule_applied_activity));
         preference.setTitle(R.string.rule_details_field_activity);
