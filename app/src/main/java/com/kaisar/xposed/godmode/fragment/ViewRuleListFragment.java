@@ -32,7 +32,6 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ViewRule;
-import com.kaisar.xposed.godmode.util.Preconditions;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.ArrayList;
@@ -83,14 +82,24 @@ public final class ViewRuleListFragment extends Fragment {
         });
     }
 
+    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View viewGroup = super.onCreateView(inflater, container, savedInstanceState);
-        mRecyclerView = Preconditions.checkNotNull(viewGroup).findViewById(R.id.recycler_view);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(requireContext());
-        mRecyclerView.setLayoutManager(linearLayoutManager);
-        mRecyclerView.setAdapter(new ListAdapter());
-        return viewGroup;
+        if (mRecyclerView == null) {
+            mRecyclerView = (RecyclerView) super.onCreateView(inflater, container, savedInstanceState);
+        }
+        return mRecyclerView;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        RecyclerView recyclerView = (RecyclerView) view;
+        ListAdapter adapter = (ListAdapter) recyclerView.getAdapter();
+        if (adapter == null) {
+            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(requireContext());
+            recyclerView.setLayoutManager(linearLayoutManager);
+            recyclerView.setAdapter(new ListAdapter());
+        }
     }
 
     @Override
