@@ -77,7 +77,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
     @Override
     public void onStart() {
         super.onStart();
-        mSharedViewModel.mActRules.observe(this, newData -> {
+        mSharedViewModel.actRules.observe(this, newData -> {
             if (newData.isEmpty()) {
                 NavHostFragment.findNavController(this).popBackStack();
             } else {
@@ -113,7 +113,7 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        List<ViewRule> viewRules = mSharedViewModel.mActRules.getValue();
+        List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
         if (viewRules != null) {
             ViewRule viewRule = viewRules.get(mCurIndex);
             if (item.getItemId() == R.id.menu_revert) {

@@ -64,7 +64,7 @@ public final class ViewRuleDetailsFragment extends PreferenceFragmentCompat impl
         addPreferencesFromResource(R.xml.pref_rule_details);
 
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        String packageName = mSharedViewModel.mSelectedPackage.getValue();
+        String packageName = mSharedViewModel.selectedPackage.getValue();
         Objects.requireNonNull(packageName, "packageName should not be null.");
         Drawable icon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
         String label = packageName;

@@ -35,10 +35,10 @@ import retrofit2.Callback;
 public class SharedViewModel extends ViewModel {
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
-    public final MutableLiveData<Integer> mTitle = new MutableLiveData<>();
-    public final MutableLiveData<AppRules> mAppRules = new MutableLiveData<>();
-    public final MutableLiveData<List<ViewRule>> mActRules = new MutableLiveData<>();
-    public final MutableLiveData<String> mSelectedPackage = new MutableLiveData<>();
+    public final MutableLiveData<Integer> title = new MutableLiveData<>();
+    public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
+    public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
+    public final MutableLiveData<String> selectedPackage = new MutableLiveData<>();
 
     public SharedViewModel() {
         LocalRepository.addObserver("*", new IObserver.Stub() {
@@ -48,20 +48,20 @@ public class SharedViewModel extends ViewModel {
 
             @Override
             public void onViewRuleChanged(String packageName, ActRules actRules) {
-                mAppRules.postValue(LocalRepository.loadAppRules());
-                if (TextUtils.equals(packageName, mSelectedPackage.getValue())) {
-                    mSelectedPackage.postValue(packageName);
+                appRules.postValue(LocalRepository.loadAppRules());
+                if (TextUtils.equals(packageName, selectedPackage.getValue())) {
+                    selectedPackage.postValue(packageName);
                 }
             }
         });
     }
 
     public void loadAppRules() {
-        mExecutor.execute(() -> mAppRules.postValue(LocalRepository.loadAppRules()));
+        mExecutor.execute(() -> appRules.postValue(LocalRepository.loadAppRules()));
     }
 
     public void updateTitle(@StringRes int titleId) {
-        mTitle.setValue(titleId);
+        title.setValue(titleId);
     }
 
     public void getGroupInfo(Callback<Map<String, String>[]> cb) {
@@ -69,12 +69,12 @@ public class SharedViewModel extends ViewModel {
     }
 
     public void updateSelectedPackage(String packageName) {
-        mSelectedPackage.postValue(packageName);
+        selectedPackage.postValue(packageName);
     }
 
     public void updateViewRuleList(String packageName) {
         ArrayList<ViewRule> viewRules = new ArrayList<>();
-        AppRules appRules = mAppRules.getValue();
+        AppRules appRules = this.appRules.getValue();
         if (appRules != null && appRules.containsKey(packageName)) {
             ActRules actRules = appRules.get(packageName);
             if (actRules != null && !actRules.isEmpty()) {
@@ -85,7 +85,7 @@ public class SharedViewModel extends ViewModel {
                 Collections.sort(viewRules, (o1, o2) -> (int) (o1.timestamp - o2.timestamp));
             }
         }
-        mActRules.setValue(viewRules);
+        actRules.setValue(viewRules);
     }
 
     private boolean isMainThread() {

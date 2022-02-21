@@ -23,7 +23,7 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_container_activity);
         SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
-        sharedViewModel.mTitle.observe(this, this::setTitle);
+        sharedViewModel.title.observe(this, this::setTitle);
         startNotificationService();
     }
 

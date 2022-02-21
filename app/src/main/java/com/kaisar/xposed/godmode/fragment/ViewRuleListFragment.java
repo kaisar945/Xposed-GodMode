@@ -58,7 +58,7 @@ public final class ViewRuleListFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mPackageName = mSharedViewModel.mSelectedPackage.getValue();
+        mPackageName = mSharedViewModel.selectedPackage.getValue();
         Objects.requireNonNull(mPackageName, "mSelectedPackage should not be null.");
         try {
             PackageManager packageManager = requireContext().getPackageManager();
@@ -66,8 +66,8 @@ public final class ViewRuleListFragment extends Fragment {
         } catch (PackageManager.NameNotFoundException e) {
             mIcon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
         }
-        mSharedViewModel.mSelectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
-        mSharedViewModel.mActRules.observe(this, newData -> {
+        mSharedViewModel.selectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
+        mSharedViewModel.actRules.observe(this, newData -> {
             if (newData.isEmpty()) {
                 NavHostFragment.findNavController(this).popBackStack();
             } else {

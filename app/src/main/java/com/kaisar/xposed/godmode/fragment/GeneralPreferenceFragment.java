@@ -1,6 +1,6 @@
 package com.kaisar.xposed.godmode.fragment;
 
-import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragmentDirections.*;
+import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragmentDirections.actionGeneralPreferenceFragmentToViewRuleListFragment;
 
 import android.Manifest;
 import android.app.ProgressDialog;
@@ -83,8 +83,9 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
         mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
-        mSharedViewModel.mAppRules.observe(this, this::onAppRuleChange);
+        mSharedViewModel.appRules.observe(this, this::onAppRuleChange);
         if (!checkCrash()) {
+            mProgressPreference.setVisible(true);
             mSharedViewModel.loadAppRules();
         }
     }
@@ -155,6 +156,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.pref_general, rootKey);
         mProgressPreference = (ProgressPreference) findPreference(getString(R.string.pref_key_progress_indicator));
+        mProgressPreference.setVisible(false);
         mEditorSwitchPreference = (SwitchPreferenceCompat) findPreference(getString(R.string.pref_key_editor));
         mEditorSwitchPreference.setChecked(GodModeManager.getDefault().isInEditMode());
         mEditorSwitchPreference.setOnPreferenceClickListener(this);
