@@ -141,7 +141,7 @@ public final class ViewRuleListFragment extends Fragment {
     private final class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> implements View.OnClickListener {
 
         @LayoutRes
-        private final int mLayoutResId = androidx.preference.R.layout.preference;
+        private final int mLayoutResId = androidx.preference.R.layout.preference_material;
         private final List<ViewRule> mData = new ArrayList<>();
 
         public void setData(List<ViewRule> newData) {
@@ -163,10 +163,11 @@ public final class ViewRuleListFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             ViewRule viewRule = mData.get(position);
-            Glide.with(ViewRuleListFragment.this).load(viewRule).error(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.mImageView);
+            Glide.with(ViewRuleListFragment.this).load(viewRule).error(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.imageView);
             if (viewRule.activityClass != null && viewRule.activityClass.lastIndexOf('.') > -1) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
-                holder.mTitleTextView.setText(getString(R.string.field_activity, activityName));
+                holder.titleView.setText(getString(R.string.field_activity, activityName));
+                holder.titleView.setSingleLine();
             }
 
             SpannableStringBuilder summaryBuilder = new SpannableStringBuilder();
@@ -176,7 +177,7 @@ public final class ViewRuleListFragment extends Fragment {
                 summaryBuilder.append(ss);
             }
             summaryBuilder.append(getString(R.string.field_view, viewRule.viewClass));
-            holder.mSummaryTextView.setText(summaryBuilder);
+            holder.summaryView.setText(summaryBuilder);
             holder.itemView.setFocusable(true);
             holder.itemView.setClickable(true);
             holder.itemView.setTag(position);
@@ -196,15 +197,15 @@ public final class ViewRuleListFragment extends Fragment {
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            final ImageView mImageView;
-            final TextView mTitleTextView;
-            final TextView mSummaryTextView;
+            final ImageView imageView;
+            final TextView titleView;
+            final TextView summaryView;
 
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                mImageView = itemView.findViewById(android.R.id.icon);
-                mTitleTextView = itemView.findViewById(android.R.id.title);
-                mSummaryTextView = itemView.findViewById(android.R.id.summary);
+                imageView = itemView.findViewById(android.R.id.icon);
+                titleView = itemView.findViewById(android.R.id.title);
+                summaryView = itemView.findViewById(android.R.id.summary);
             }
         }
     }
