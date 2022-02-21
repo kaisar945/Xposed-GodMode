@@ -15,12 +15,11 @@ import com.kaisar.xposed.godmode.R;
 
 public final class ImageViewPreference extends androidx.preference.Preference {
 
-    private ImageView mImageView;
     private Bitmap mBitmap;
 
     public ImageViewPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        setLayoutResource(R.layout.preference_image_preview);
+        setLayoutResource(R.layout.preference_widget_image);
     }
 
     public ImageViewPreference(Context context, AttributeSet attrs, int defStyleAttr) {
@@ -38,19 +37,16 @@ public final class ImageViewPreference extends androidx.preference.Preference {
     @Override
     public void onBindViewHolder(PreferenceViewHolder holder) {
         super.onBindViewHolder(holder);
-        mImageView = (ImageView) holder.findViewById(R.id.image);
+        ImageView imageView = (ImageView) holder.itemView.findViewById(R.id.image);
         if (mBitmap != null) {
-            mImageView.setImageBitmap(mBitmap);
+            imageView.setImageBitmap(mBitmap);
             mBitmap = null;
         }
     }
 
     public void setImageBitmap(Bitmap bm) {
-        if (mImageView != null) {
-            mImageView.setImageBitmap(mBitmap);
-        } else {
-            mBitmap = bm;
-        }
+        mBitmap = bm;
+        notifyChanged();
     }
 
 }

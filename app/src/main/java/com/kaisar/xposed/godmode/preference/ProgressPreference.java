@@ -2,7 +2,6 @@ package com.kaisar.xposed.godmode.preference;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.View;
 
 import androidx.preference.PreferenceViewHolder;
 
@@ -16,12 +15,12 @@ public final class ProgressPreference extends androidx.preference.Preference {
 
     public ProgressPreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        setLayoutResource(R.layout.preference_progress);
+        setLayoutResource(R.layout.preference_widget_progress);
     }
 
     public ProgressPreference(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
-        setLayoutResource(R.layout.preference_progress);
+        setLayoutResource(R.layout.preference_widget_progress);
     }
 
     public ProgressPreference(Context context, AttributeSet attrs) {
