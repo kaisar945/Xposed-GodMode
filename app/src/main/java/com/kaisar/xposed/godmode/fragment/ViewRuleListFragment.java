@@ -50,7 +50,7 @@ public final class ViewRuleListFragment extends Fragment {
     private SharedViewModel mSharedViewModel;
 
     public ViewRuleListFragment() {
-        super(R.layout.list_fragment_layout);
+        super(R.layout.fragment_rule_list);
     }
 
     @Override
