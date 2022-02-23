@@ -28,9 +28,6 @@ android {
 }
 
 repositories {
-    flatDir {
-        dirs 'libs'
-    }
     maven {
         url "https://raw.github.com/embarkmobile/zxing-android-minimal/mvn-repo/maven-repository/"
     }
@@ -58,5 +55,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.google.android.material:material:1.6.0-alpha02'
     implementation 'com.github.bumptech.glide:glide:4.13.0'
+    implementation 'dev.rikka.rikkax.insets:insets:1.2.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
 }

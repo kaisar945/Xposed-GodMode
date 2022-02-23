@@ -7,9 +7,12 @@ import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.appcompat.widget.Toolbar;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
 
-import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.io.File;
@@ -22,8 +25,15 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_container_activity);
-        SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
-        sharedViewModel.title.observe(this, this::setTitle);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
+        Toolbar toolbar = findViewById(R.id.main_toolbar);
+        NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         startNotificationService();
     }
 

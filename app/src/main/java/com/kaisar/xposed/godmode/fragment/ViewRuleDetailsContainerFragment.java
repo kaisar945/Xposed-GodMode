@@ -45,7 +45,6 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mSharedViewModel.updateTitle(R.string.title_rule_details);
     }
 
     @Override

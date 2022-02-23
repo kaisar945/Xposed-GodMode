@@ -102,12 +102,6 @@ public final class ViewRuleListFragment extends Fragment {
         }
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        mSharedViewModel.updateTitle(R.string.title_app_rule);
-    }
-
     private static final class Callback extends DiffUtil.Callback {
 
         final List<ViewRule> mOldData, mNewData;

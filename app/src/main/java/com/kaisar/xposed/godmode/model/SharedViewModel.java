@@ -8,7 +8,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 
-import androidx.annotation.StringRes;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
@@ -35,7 +34,6 @@ import retrofit2.Callback;
 public class SharedViewModel extends ViewModel {
 
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
-    public final MutableLiveData<Integer> title = new MutableLiveData<>();
     public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
     public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
     public final MutableLiveData<String> selectedPackage = new MutableLiveData<>();
@@ -58,10 +56,6 @@ public class SharedViewModel extends ViewModel {
 
     public void loadAppRules() {
         mExecutor.execute(() -> appRules.postValue(LocalRepository.loadAppRules()));
-    }
-
-    public void updateTitle(@StringRes int titleId) {
-        title.setValue(titleId);
     }
 
     public void getGroupInfo(Callback<Map<String, String>[]> cb) {

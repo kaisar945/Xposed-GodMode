@@ -7,7 +7,7 @@
     <fragment
             android:id="@+id/generalPreferenceFragment"
             android:name="com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment"
-            android:label="GeneralPreferenceFragment">
+            android:label="@string/app_name">
         <action
                 android:id="@+id/action_generalPreferenceFragment_to_viewRuleListFragment"
                 app:destination="@id/viewRuleListFragment" />
@@ -15,7 +15,7 @@
     <fragment
             android:id="@+id/viewRuleListFragment"
             android:name="com.kaisar.xposed.godmode.fragment.ViewRuleListFragment"
-            android:label="ViewRuleListFragment">
+            android:label="@string/title_app_rule">
         <action
                 android:id="@+id/action_viewRuleListFragment_to_viewRuleDetailsContainerFragment"
                 app:destination="@id/viewRuleDetailsContainerFragment" />
@@ -23,7 +23,7 @@
     <fragment
             android:id="@+id/viewRuleDetailsContainerFragment"
             android:name="com.kaisar.xposed.godmode.fragment.ViewRuleDetailsContainerFragment"
-            android:label="ViewRuleDetailsContainerFragment">
+            android:label="@string/title_rule_details">
         <argument
                 android:name="curIndex"
                 app:argType="integer" />

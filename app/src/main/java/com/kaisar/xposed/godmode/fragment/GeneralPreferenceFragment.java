@@ -177,12 +177,6 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        mSharedViewModel.updateTitle(R.string.app_name);
-    }
-
-    @Override
     public void onDestroy() {
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(
