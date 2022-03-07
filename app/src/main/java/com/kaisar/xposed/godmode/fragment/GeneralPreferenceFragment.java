@@ -4,6 +4,7 @@ import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragmentDirect
 
 import android.Manifest;
 import android.app.ProgressDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -34,6 +35,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.GodModeApplication;
@@ -47,7 +49,6 @@ import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
 import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.widget.Snackbar;
 
 import java.util.Map;
 import java.util.Set;
@@ -73,7 +74,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
     private Preference mJoinGroupPreference;
     private Preference mDonatePreference;
 
-    private ActivityResultLauncher<String> mFileLauncher;
+    private ActivityResultLauncher<String[]> mRestoreLauncher;
     private SharedViewModel mSharedViewModel;
 
     @Override
@@ -82,7 +83,7 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         setHasOptionsMenu(true);
         PreferenceManager.getDefaultSharedPreferences(requireContext()).registerOnSharedPreferenceChangeListener(this);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
-        mFileLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.GetContent(), this::onActivityResult);
+        mRestoreLauncher = requireActivity().registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::onBackupFileSelected);
         mSharedViewModel.appRules.observe(this, this::onAppRuleChange);
         if (!checkCrash()) {
             mProgressPreference.setVisible(true);
@@ -107,18 +108,19 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         return false;
     }
 
-    private void onActivityResult(Uri uri) {
+    private void onBackupFileSelected(Uri uri) {
         if (uri == null) return;
         mProgressPreference.setVisible(true);
-        mSharedViewModel.importExternalRules(requireContext(), uri, new SharedViewModel.ImportCallback() {
+        mSharedViewModel.restoreRules(uri, new SharedViewModel.ResultCallback() {
             @Override
             public void onSuccess() {
-                Snackbar.make(requireActivity(), R.string.import_success, Snackbar.LENGTH_LONG).show();
+                mProgressPreference.setVisible(false);
             }
 
             @Override
-            public void onFailure(Throwable t) {
-                Snackbar.make(requireActivity(), R.string.import_failed, Snackbar.LENGTH_LONG).show();
+            public void onFailure(Exception e) {
+                mProgressPreference.setVisible(false);
+                Snackbar.make(requireView(), R.string.snack_bar_msg_restore_rules_fail, Snackbar.LENGTH_LONG).show();
             }
         });
     }
@@ -232,7 +234,11 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
                 permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 return true;
             }
-            mFileLauncher.launch("*/*");
+            try {
+                mRestoreLauncher.launch(new String[]{"*/*"});
+            } catch (ActivityNotFoundException e) {
+                Snackbar.make(requireView(), R.string.snack_bar_msg_restore_rules_fail, Snackbar.LENGTH_SHORT).show();
+            }
         } else if (item.getItemId() == R.id.menu_icon_switch) {
             boolean hidden = mSharedViewModel.isIconHidden(requireContext());
             mSharedViewModel.setIconHidden(requireContext(), hidden = !hidden);

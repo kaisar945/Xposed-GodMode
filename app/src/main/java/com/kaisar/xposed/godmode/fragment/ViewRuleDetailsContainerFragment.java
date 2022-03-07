@@ -1,5 +1,9 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import android.content.ActivityNotFoundException;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -8,6 +12,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -19,14 +25,13 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 import androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
-import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.rule.ViewRule;
+import com.kaisar.xposed.godmode.util.BackupUtils;
 import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.util.SafHelper;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -40,11 +45,38 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
     private ViewPager2 mViewPager;
     private SharedViewModel mSharedViewModel;
 
+    private ActivityResultLauncher<String> mBackupLauncher;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+        ViewRuleDetailsContainerFragmentArgs args = ViewRuleDetailsContainerFragmentArgs.fromBundle(requireArguments());
+        mCurIndex = args.getCurIndex();
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mBackupLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), this::onBackupFileSelected);
+    }
+
+    private void onBackupFileSelected(Uri uri) {
+        if (uri == null) return;
+        List<ViewRule> rules = mSharedViewModel.actRules.getValue();
+        if (rules != null && !rules.isEmpty()) {
+            ViewRule viewRule = rules.get(mCurIndex);
+            List<ViewRule> viewRules = rules.subList(mCurIndex, mCurIndex + 1);
+            mSharedViewModel.backupRules(uri, viewRule.packageName, viewRules, new SharedViewModel.ResultCallback() {
+                @Override
+                public void onSuccess() {
+
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -115,16 +147,25 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
         List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
         if (viewRules != null) {
             ViewRule viewRule = viewRules.get(mCurIndex);
-            if (item.getItemId() == R.id.menu_revert) {
+            if (item.getItemId() == R.id.menu_delete_rule) {
                 mSharedViewModel.deleteRule(viewRule);
                 NavHostFragment.findNavController(this).popBackStack();
-            } else if (item.getItemId() == R.id.menu_export) {
-                SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault());
-                String date = simpleDateFormat.format(new Date());
-                ViewRule mViewRule = viewRules.get(0);
-                SafHelper.saveFile(requireActivity(), String.format("GodMode-Rules-%s", String.format("%s(%s)-%s", mViewRule.label, mViewRule.matchVersionName, date)), 114514);
-                File cacheDir = requireActivity().getExternalCacheDir();
-                LocalRepository.exportRules(cacheDir.getPath(), viewRules);
+            } else if (item.getItemId() == R.id.menu_backup_rule) {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault());
+                    PackageManager packageManager = requireContext().getPackageManager();
+                    String packageName = mSharedViewModel.selectedPackage.getValue();
+                    if (packageName == null)
+                        throw new BackupUtils.BackupException("packageName should not be null.");
+                    ApplicationInfo applicationInfo = packageManager.getApplicationInfo(packageName, 0);
+                    String label = applicationInfo.loadLabel(packageManager).toString();
+                    String filename = String.format(Locale.getDefault(), "%s_%s.gzip", label, sdf.format(new Date()));
+                    mBackupLauncher.launch(filename);
+                    return true;
+                } catch (ActivityNotFoundException | PackageManager.NameNotFoundException | BackupUtils.BackupException e) {
+                    Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                    return false;
+                }
             }
         }
         return true;

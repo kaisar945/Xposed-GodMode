@@ -13,15 +13,13 @@ import androidx.lifecycle.ViewModel;
 
 import com.kaisar.xposed.godmode.IObserver;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.injection.util.FileUtils;
 import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.repository.RemoteRepository;
 import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
+import com.kaisar.xposed.godmode.util.BackupUtils;
 
-import java.io.File;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +31,7 @@ import retrofit2.Callback;
 
 public class SharedViewModel extends ViewModel {
 
+    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService mExecutor = Executors.newSingleThreadExecutor();
     public final MutableLiveData<AppRules> appRules = new MutableLiveData<>();
     public final MutableLiveData<List<ViewRule>> actRules = new MutableLiveData<>();
@@ -110,32 +109,30 @@ public class SharedViewModel extends ViewModel {
         return pm.getComponentEnabledSetting(cmp) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
     }
 
-    public interface ImportCallback {
+    public interface ResultCallback {
         void onSuccess();
 
-        void onFailure(Throwable t);
+        void onFailure(Exception e);
     }
 
-    public void importExternalRules(Context context, Uri uri, ImportCallback callback) {
-        Handler handler = new Handler();
+    public void restoreRules(Uri uri, ResultCallback callback) {
         mExecutor.execute(() -> {
-            try (InputStream in = context.getContentResolver().openInputStream(uri)) {
-                File file = new File(context.getCacheDir(), "app.gm");
-                try {
-                    if (FileUtils.copy(in, file)) {
-                        if (LocalRepository.importRules(file.getPath())) {
-                            handler.post(callback::onSuccess);
-                        } else {
-                            handler.post(() -> callback.onFailure(new Exception("import fail")));
-                        }
-                    } else {
-                        handler.post(() -> callback.onFailure(new Exception("copy file error")));
-                    }
-                } finally {
-                    FileUtils.delete(file);
-                }
-            } catch (Exception e) {
-                handler.post(() -> callback.onFailure(e));
+            try {
+                BackupUtils.restoreRules(uri);
+                mMainHandler.post(callback::onSuccess);
+            } catch (BackupUtils.RestoreException e) {
+                mMainHandler.post(() -> callback.onFailure(e));
+            }
+        });
+    }
+
+    public void backupRules(Uri uri, String packageName, List<ViewRule> viewRules, ResultCallback callback) {
+        mExecutor.execute(() -> {
+            try {
+                BackupUtils.backupRules(uri, packageName, viewRules);
+                mMainHandler.post(callback::onSuccess);
+            } catch (BackupUtils.BackupException e) {
+                mMainHandler.post(() -> callback.onFailure(e));
             }
         });
     }

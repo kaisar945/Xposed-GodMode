@@ -1,7 +1,10 @@
 package com.kaisar.xposed.godmode.fragment;
 
+import android.content.ActivityNotFoundException;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
@@ -16,6 +19,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,13 +34,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.android.material.snackbar.Snackbar;
 import com.kaisar.xposed.godmode.R;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.rule.ViewRule;
-import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -48,6 +56,7 @@ public final class ViewRuleListFragment extends Fragment {
     private String mPackageName;
     private RecyclerView mRecyclerView;
     private SharedViewModel mSharedViewModel;
+    private ActivityResultLauncher<String> mBackupLauncher;
 
     public ViewRuleListFragment() {
         super(R.layout.fragment_rule_list);
@@ -66,6 +75,7 @@ public final class ViewRuleListFragment extends Fragment {
         } catch (PackageManager.NameNotFoundException e) {
             mIcon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
         }
+        mBackupLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), this::onBackupFileSelected);
         mSharedViewModel.selectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
         mSharedViewModel.actRules.observe(this, newData -> {
             if (newData.isEmpty()) {
@@ -80,6 +90,25 @@ public final class ViewRuleListFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void onBackupFileSelected(Uri uri) {
+        if (uri == null) return;
+        List<ViewRule> rules = mSharedViewModel.actRules.getValue();
+        if (rules != null && !rules.isEmpty()) {
+            mSharedViewModel.backupRules(uri, mPackageName, rules, new SharedViewModel.ResultCallback() {
+                @Override
+                public void onSuccess() {
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+        }
     }
 
     @Nullable
@@ -212,12 +241,23 @@ public final class ViewRuleListFragment extends Fragment {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menu_revoke_rules) {
-            if (!mSharedViewModel.deleteAppRules(mPackageName.toString())) {
-                Snackbar.make(requireActivity(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
+        if (item.getItemId() == R.id.menu_delete_rules) {
+            if (!mSharedViewModel.deleteAppRules(mPackageName)) {
+                Snackbar.make(requireView(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
             }
-        } else if (item.getItemId() == R.id.menu_export_rules) {
-
+        } else if (item.getItemId() == R.id.menu_backup_rules) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault());
+                PackageManager packageManager = requireContext().getPackageManager();
+                ApplicationInfo applicationInfo = packageManager.getApplicationInfo(mPackageName, 0);
+                String label = applicationInfo.loadLabel(packageManager).toString();
+                String filename = String.format(Locale.getDefault(), "%s_%s.gzip", label, sdf.format(new Date()));
+                mBackupLauncher.launch(filename);
+                return true;
+            } catch (ActivityNotFoundException | PackageManager.NameNotFoundException e) {
+                Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                return false;
+            }
         }
         return super.onOptionsItemSelected(item);
     }

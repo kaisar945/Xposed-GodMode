@@ -3,8 +3,8 @@
 
     <item
         android:id="@+id/menu_import_rules"
-        android:contentDescription="@string/menu_title_import_view_rule_description"
-        android:title="@string/menu_title_import_view_rule" />
+        android:contentDescription="@string/menu_title_restore_rules_description"
+        android:title="@string/menu_title_restore_rules" />
 
     <item
         android:id="@+id/menu_icon_switch"

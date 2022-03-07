@@ -2,11 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
-        android:id="@+id/menu_revert"
-        android:title="@string/menu_revert" />
+        android:id="@+id/menu_delete_rule"
+        android:title="@string/menu_delete_rule" />
 
     <item
-        android:id="@+id/menu_export"
-        android:title="@string/menu_export" />
+        android:id="@+id/menu_backup_rule"
+        android:title="@string/menu_backup_rule" />
 
 </menu>
