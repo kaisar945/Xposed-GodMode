@@ -1,6 +1,12 @@
 <resources>
     <string name="app_name">上帝模式</string>
 
+    <string name="pref_key_progress_indicator" translatable="false">progress_indicator</string>
+    <string name="pref_key_editor" translatable="false">editor_switch</string>
+    <string name="pref_key_join_group" translatable="false">join_group</string>
+    <string name="pref_key_donate" translatable="false">donate</string>
+    <string name="pref_key_app_rules" translatable="false">app_rules</string>
+
     <string name="pref_header_general">通用</string>
     <string name="pref_header_support">支持</string>
     <string name="pref_header_app_rules">应用规则</string>
@@ -14,8 +20,8 @@
     <string name="pref_title_add_group">加入组织</string>
     <string name="pref_description_add_group">这里有一群老伙计们</string>
 
-    <string name="menu_revert">恢复</string>
-    <string name="menu_export">导出</string>
+    <string name="menu_delete_rule">删除规则</string>
+    <string name="menu_backup_rule">备份规则</string>
     <string name="thanks">感谢你我的伙计</string>
     <string name="tips_qrcord">嘿！伙计二维码帮你放相册了</string>
     <string name="dialog_btn_alipay">支付宝支持</string>
@@ -26,10 +32,10 @@
     <string name="manage">管理</string>
     <string name="xposed_description">神说要有人，于是就有了伙计们。</string>
 
-    <string name="menu_title_purge_all_rules">恢复所有规则</string>
-    <string name="menu_export_all_rules">导出所有规则</string>
-    <string name="menu_title_import_view_rule">导入规则</string>
-    <string name="menu_title_import_view_rule_description">从相册选择一个图片规则导入</string>
+    <string name="menu_delete_rules">删除全部规则</string>
+    <string name="menu_backup_rules">备份全部规则</string>
+    <string name="menu_title_restore_rules">恢复规则</string>
+    <string name="menu_title_restore_rules_description">从外部存储恢复规则</string>
     <string name="menu_icon_switch_show">显示图标</string>
     <string name="menu_icon_switch_hide">隐藏图标</string>
     <string name="menu_icon_switch_description">从桌面隐藏/显示图标</string>
@@ -41,22 +47,13 @@
     <string name="field_activity">依附界面:%1$s</string>
     <string name="field_view">控件类型:%1$s</string>
 
-    <string name="dialog_message_export">嘿 伙计! 别着急看起来就快成功了</string>
-    <string name="export_successful">导出成功,文件路径:%1$s</string>
-    <string name="export_failed">导出失败</string>
-
-    <string name="dialog_message_import">@string/dialog_message_export</string>
-    <string name="import_success">导入规则成功</string>
-    <string name="import_failed">导入规则失败</string>
-
     <string name="hey_guy">嘿 伙计</string>
     <string name="not_active_module">上帝模式还没有激活，呃… 我是说也许你应该到管理器中重新激活一下</string>
-    <string name="active">激活</string>
-    <string name="not_found_xp_installer">噢！ 我的伙计 没有在系统里发现XposedInstaller</string>
     <string name="welcome_title">嘿！伙计，真高兴又见到你！</string>
 
-    <string name="dialog_loading">噢! 伙计 让我来看看这里有些什么</string>
-    <string name="snack_bar_msg_revert_rule_fail">恢复规则失败</string>
+    <string name="snack_bar_msg_revert_rule_fail">删除规则失败</string>
+    <string name="snack_bar_msg_backup_rule_fail">备份规则失败</string>
+    <string name="snack_bar_msg_restore_rules_fail">恢复规则失败</string>
     <string name="dialog_btn_copy">复制给我的老伙计</string>
     <string name="crash_tip">    我想你应该遇了些麻烦 天知道这该死的程序都干了些什么 我想你应该把下面这些奇奇怪怪的日志复制给老伙计 也许有用吧 是的 我是说也许 谁知道呢\n\n</string>
     <string name="wechat_donate_tips">伙计 二维码已经放到相册了 点击+号扫一扫从相册选取</string>
@@ -71,7 +68,7 @@
     <string name="rule_details_field_res_name">资源名称</string>
     <string name="rule_details_field_text">控件文本</string>
     <string name="rule_details_field_description">控件描述</string>
-    <string name="rule_details_field_visibility">可见性</string>
+    <string name="rule_details_field_visible">可见性</string>
     <string name="rule_details_invisible">占位</string>
     <string name="rule_details_gone">不占位</string>
     <string name="rule_details_set_alias">设置别名</string>
@@ -80,6 +77,25 @@
     <string name="accessibility_block">屏蔽</string>
     <string name="block_fail">屏蔽失败:%1$s</string>
     <string name="dialog_message_query_community">别着急我的伙计我以上帝的名义打赌这决定不会超过5秒相信我</string>
-    <string name="unknown_activity">未知界面</string>
     <string name="tag_gm_cmp" translatable="false">gm_cmp</string>
+
+    <string name="pref_key_detail_rule_info" translatable="false">rule_info</string>
+    <string name="pref_key_detail_rule_created_time" translatable="false">created_time</string>
+    <string name="pref_key_detail_rule_match_version" translatable="false">match_version</string>
+    <string name="pref_key_detail_rule_applied_activity" translatable="false">applied_activity</string>
+    <string name="pref_key_detail_rule_alias" translatable="false">alias</string>
+    <string name="pref_key_detail_view_bounds" translatable="false">view_bounds</string>
+    <string name="pref_key_detail_view_type" translatable="false">view_type</string>
+
+    <string name="pref_key_detail_view_depth" translatable="false">view_depth</string>
+    <string name="pref_key_detail_view_res_name" translatable="false">view_res_name</string>
+    <string name="pref_key_detail_view_text" translatable="false">view_text</string>
+    <string name="pref_key_detail_view_description" translatable="false">view_description</string>
+    <string name="pref_key_detail_view_visible" translatable="false">view_visibility</string>
+    <string name="pref_key_detail_preview_image" translatable="false">preview_image</string>
+    <string name="res_inject_success" translatable="false">Resources injection success</string>
+    <string name="fetch_group_list_err1">嘿 伙计 我想这一定是个臭虫</string>
+    <string name="fetch_group_list_err2">噢 糟糕 我想上帝也不知道发生了什么</string>
+    <string name="fetch_group_list_err3">嘿 伙计, 快来看看这是什么%1$s 真是有趣!</string>
+
 </resources>

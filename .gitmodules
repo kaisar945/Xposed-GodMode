@@ -1,6 +1,3 @@
 [submodule "libxservicemanager"]
 	path = libxservicemanager
 	url = https://github.com/jrsen/XServiceManager.git
-[submodule "libhotloader"]
-	path = libhotloader
-	url = https://github.com/jrsen/Xposed-HotLoader.git

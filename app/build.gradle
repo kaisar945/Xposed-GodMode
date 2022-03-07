@@ -1,8 +1,10 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+    id 'androidx.navigation.safeargs'
+}
 
 android {
     compileSdkVersion 31
-    buildToolsVersion '29.0.3'
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -20,12 +22,12 @@ android {
     }
     productFlavors {
     }
+    androidResources {
+        additionalParameters("--allow-reserved-package-id", "--package-id", "0x95")
+    }
 }
 
 repositories {
-    flatDir {
-        dirs 'libs'
-    }
     maven {
         url "https://raw.github.com/embarkmobile/zxing-android-minimal/mvn-repo/maven-repository/"
     }
@@ -34,20 +36,25 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(path: ':libxservicemanager')
-    implementation project(path: ':libhotloader')
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+    implementation 'androidx.navigation:navigation-fragment:2.4.1'
+    implementation 'androidx.navigation:navigation-ui:2.4.1'
     androidTestImplementation('androidx.test.espresso:espresso-core:3.3.0', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
-    implementation 'androidx.appcompat:appcompat:1.3.1'
+    implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation "androidx.viewpager2:viewpager2:1.0.0"
-    implementation "androidx.fragment:fragment:1.3.6"
+    implementation "androidx.fragment:fragment:1.4.1"
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     compileOnly 'de.robv.android.xposed:api:82'
     compileOnly 'de.robv.android.xposed:api:82:sources'
-    implementation 'com.google.code.gson:gson:2.8.8'
+    implementation 'com.google.code.gson:gson:2.8.9'
     implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'androidx.legacy:legacy-preference-v14:1.0.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.google.android.material:material:1.6.0-alpha02'
+    implementation 'com.github.bumptech.glide:glide:4.13.0'
+    implementation 'dev.rikka.rikkax.insets:insets:1.2.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
 }

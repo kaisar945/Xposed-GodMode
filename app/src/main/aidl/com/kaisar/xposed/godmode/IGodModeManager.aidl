@@ -9,6 +9,8 @@ import android.os.ParcelFileDescriptor;
 
 interface IGodModeManager {
 
+    boolean hasLight();
+
     void setEditMode(boolean enable);
 
     boolean isInEditMode();

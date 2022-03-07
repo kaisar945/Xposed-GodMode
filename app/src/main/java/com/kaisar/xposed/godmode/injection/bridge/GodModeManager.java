@@ -35,6 +35,15 @@ public final class GodModeManager {
         }
     }
 
+    public boolean hasLight() {
+        try {
+            return mGMM.hasLight();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public void setEditMode(boolean enable) {
         try {
             mGMM.setEditMode(enable);

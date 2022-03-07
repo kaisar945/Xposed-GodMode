@@ -6,6 +6,7 @@ import androidx.annotation.Keep;
 
 /**
  * Created by jrsen on 17-10-21.
+ * Use this command to enable logger "adb shell setprop log.tag.GodMode DEBUG"
  */
 
 @Keep

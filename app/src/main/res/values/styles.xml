@@ -1,24 +1,10 @@
 <resources>
 
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight">
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-    </style>
-
-    <style name="TextAppearance.Design.Snackbar.Message" parent="android:TextAppearance">
-        <item name="android:textSize">14sp</item>
-        <item name="android:textColor">?android:textColorPrimary</item>
-    </style>
-
-    <style name="Widget.Design.Snackbar" parent="android:Widget">
-        <item name="android:minWidth">-1px</item>
-        <item name="android:maxWidth">-1px</item>
-        <item name="android:background">@drawable/design_snackbar_background</item>
-        <item name="android:paddingLeft">12dp</item>
-        <item name="android:paddingRight">12dp</item>
-        <item name="elevation">6dp</item>
     </style>
 
 </resources>

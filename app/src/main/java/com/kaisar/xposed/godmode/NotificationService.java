@@ -1,7 +1,5 @@
 package com.kaisar.xposed.godmode;
 
-import static com.kaisar.xposed.godmode.fragment.GeneralPreferenceFragment.KEY_EDITOR_SWITCH;
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -10,6 +8,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
+import android.os.Build;
 import android.os.IBinder;
 import android.text.TextUtils;
 import android.widget.Toast;
@@ -20,7 +19,6 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.PreferenceManager;
 
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.util.XposedEnvironment;
 
 /**
  * Created by jrsen on 17-10-26.
@@ -29,10 +27,11 @@ import com.kaisar.xposed.godmode.util.XposedEnvironment;
 public final class NotificationService extends Service implements SharedPreferences.OnSharedPreferenceChangeListener {
 
     private static final String TAG = "NotificationService";
+
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
+        createControlChannel();
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
     }
 
@@ -40,7 +39,7 @@ public final class NotificationService extends Service implements SharedPreferen
     public int onStartCommand(Intent intent, int flags, int startId) {
         boolean enable = isEditMode();
         if (TextUtils.equals(intent.getAction(), Intent.ACTION_EDIT)) {
-            if (!XposedEnvironment.isModuleActive(this)) {
+            if (!GodModeManager.getDefault().hasLight()) {
                 Toast.makeText(this, R.string.not_active_module, Toast.LENGTH_SHORT).show();
                 return super.onStartCommand(intent, flags, startId);
             }
@@ -51,10 +50,10 @@ public final class NotificationService extends Service implements SharedPreferen
         return super.onStartCommand(intent, flags, startId);
     }
 
-    private void createNotificationChannel() {
+    private void createControlChannel() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(TAG, "Control", NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Control by God");
+            NotificationChannel channel = new NotificationChannel(TAG, "Control panel", NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Let there be light");
             NotificationManager nm = getSystemService(NotificationManager.class);
             nm.createNotificationChannel(channel);
         }
@@ -72,10 +71,10 @@ public final class NotificationService extends Service implements SharedPreferen
 
     private Notification buildNotification(boolean editMode) {
         Intent managerIntent = new Intent(this, SettingsActivity.class);
-        PendingIntent managerPendingIntent = PendingIntent.getActivity(this, 0, managerIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent managerPendingIntent = PendingIntent.getActivity(this, 0, managerIntent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
         Intent intent = new Intent(this, NotificationService.class);
         intent.setAction(Intent.ACTION_EDIT);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
+        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
         return new NotificationCompat.Builder(this, TAG)
                 .setSmallIcon(R.drawable.ic_angel_small)
                 .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.ic_angel_normal))
@@ -113,7 +112,7 @@ public final class NotificationService extends Service implements SharedPreferen
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (TextUtils.equals(key, KEY_EDITOR_SWITCH)) {
+        if (TextUtils.equals(key, getString(R.string.pref_key_editor))) {
             postNotification(sharedPreferences.getBoolean(key, false));
         }
     }

@@ -1,18 +1,11 @@
 package com.kaisar.xposed.godmode.fragment;
 
-import static com.kaisar.xposed.godmode.GodModeApplication.TAG;
-import static com.kaisar.xposed.godmode.injection.util.CommonUtils.recycleNullableBitmap;
-
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.app.ProgressDialog;
-import android.content.Context;
-import android.content.res.TypedArray;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
+import android.content.ActivityNotFoundException;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.ParcelFileDescriptor;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
@@ -26,135 +19,178 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.res.TypedArrayUtils;
+import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.loader.app.LoaderManager;
-import androidx.loader.content.AsyncTaskLoader;
-import androidx.loader.content.Loader;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.android.material.snackbar.Snackbar;
 import com.kaisar.xposed.godmode.R;
-import com.kaisar.xposed.godmode.SettingsActivity;
-import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
-import com.kaisar.xposed.godmode.injection.util.FileUtils;
-import com.kaisar.xposed.godmode.injection.util.Logger;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
-import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.rule.ViewRule;
-import com.kaisar.xposed.godmode.util.PermissionHelper;
-import com.kaisar.xposed.godmode.util.Preconditions;
-import com.kaisar.xposed.godmode.widget.Snackbar;
 
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Created by jrsen on 17-10-29.
  */
 
-public final class ViewRuleListFragment extends Fragment implements LoaderManager.LoaderCallbacks<Boolean> {
+public final class ViewRuleListFragment extends Fragment {
 
-    private static final int THUMBNAIL_LOADER_ID = 0x01;
-    private static final int EXPORT_TASK_LOADER_ID = 0x02;
-
-    private Logger mLogger;
     private Drawable mIcon;
-    private CharSequence mLabel;
-    private CharSequence mPackageName;
-
+    private String mPackageName;
     private RecyclerView mRecyclerView;
-
     private SharedViewModel mSharedViewModel;
-
-    public void setIcon(Drawable icon) {
-        mIcon = icon;
-    }
-
-    public void setLabel(CharSequence label) {
-        mLabel = label;
-    }
-
-    public void setPackageName(CharSequence packageName) {
-        mPackageName = packageName;
-    }
+    private ActivityResultLauncher<String> mBackupLauncher;
 
     public ViewRuleListFragment() {
-        super(R.layout.list_fragment_layout);
+        super(R.layout.fragment_rule_list);
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-//        mLogger = Logger.getLogger("流程");
         setHasOptionsMenu(true);
         mSharedViewModel = new ViewModelProvider(requireActivity()).get(SharedViewModel.class);
+        mPackageName = mSharedViewModel.selectedPackage.getValue();
+        Objects.requireNonNull(mPackageName, "mSelectedPackage should not be null.");
+        try {
+            PackageManager packageManager = requireContext().getPackageManager();
+            mIcon = packageManager.getApplicationIcon(mPackageName);
+        } catch (PackageManager.NameNotFoundException e) {
+            mIcon = ResourcesCompat.getDrawable(getResources(), R.mipmap.ic_god, requireContext().getTheme());
+        }
+        mBackupLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(), this::onBackupFileSelected);
         mSharedViewModel.selectedPackage.observe(this, packageName -> mSharedViewModel.updateViewRuleList(packageName));
-        mSharedViewModel.actRules.observe(this, viewRules -> {
-            if (viewRules.isEmpty()) {
-//                    mLogger.d("規則列表頁爲空返回上一個頁面");
-                requireActivity().onBackPressed();
+        mSharedViewModel.actRules.observe(this, newData -> {
+            if (newData.isEmpty()) {
+                NavHostFragment.findNavController(this).popBackStack();
             } else {
-//                    mLogger.d("重新加載規則列表");
-                LoaderManager.getInstance(ViewRuleListFragment.this).restartLoader(THUMBNAIL_LOADER_ID, null, ViewRuleListFragment.this).onContentChanged();
+                ListAdapter adapter = (ListAdapter) mRecyclerView.getAdapter();
+                if (adapter != null) {
+                    List<ViewRule> oldData = adapter.getData();
+                    DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new Callback(oldData, newData));
+                    adapter.setData(newData);
+                    diffResult.dispatchUpdatesTo(adapter);
+                }
             }
         });
     }
 
+    private void onBackupFileSelected(Uri uri) {
+        if (uri == null) return;
+        List<ViewRule> rules = mSharedViewModel.actRules.getValue();
+        if (rules != null && !rules.isEmpty()) {
+            mSharedViewModel.backupRules(uri, mPackageName, rules, new SharedViewModel.ResultCallback() {
+                @Override
+                public void onSuccess() {
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+        }
+    }
+
+    @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View viewGroup = super.onCreateView(inflater, container, savedInstanceState);
-        Preconditions.checkNotNull(viewGroup, "view group should not be null");
-        mRecyclerView = viewGroup.findViewById(R.id.recycler_view);
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(requireContext());
-        mRecyclerView.setLayoutManager(linearLayoutManager);
-        mRecyclerView.setAdapter(new DataAdapter());
-        return viewGroup;
+        if (mRecyclerView == null) {
+            mRecyclerView = (RecyclerView) super.onCreateView(inflater, container, savedInstanceState);
+        }
+        return mRecyclerView;
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        mSharedViewModel.updateTitle(R.string.title_app_rule);
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        RecyclerView recyclerView = (RecyclerView) view;
+        ListAdapter adapter = (ListAdapter) recyclerView.getAdapter();
+        if (adapter == null) {
+            LinearLayoutManager linearLayoutManager = new LinearLayoutManager(requireContext());
+            recyclerView.setLayoutManager(linearLayoutManager);
+            recyclerView.setAdapter(new ListAdapter());
+        }
     }
 
-    final class DataAdapter extends RecyclerView.Adapter<DataAdapter.ViewHolder> {
+    private static final class Callback extends DiffUtil.Callback {
 
-        final @LayoutRes
-        int mResourceId;
+        final List<ViewRule> mOldData, mNewData;
 
-        @SuppressLint("RestrictedApi")
-        public DataAdapter() {
-            int attr = TypedArrayUtils.getAttr(requireContext(), R.attr.preferenceStyle, android.R.attr.preferenceStyle);
-            TypedArray a = requireContext().obtainStyledAttributes(null, R.styleable.Preference, attr, 0);
-            mResourceId = TypedArrayUtils.getResourceId(a, R.styleable.Preference_layout,
-                    R.styleable.Preference_android_layout, R.layout.preference);
-            a.recycle();
+        private Callback(List<ViewRule> oldData, List<ViewRule> newData) {
+            mOldData = oldData;
+            mNewData = newData;
+        }
+
+        @Override
+        public int getOldListSize() {
+            return mOldData.size();
+        }
+
+        @Override
+        public int getNewListSize() {
+            return mNewData.size();
+        }
+
+        @Override
+        public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+            return mOldData.get(oldItemPosition).hashCode() == mNewData.get(newItemPosition).hashCode();
+        }
+
+        @Override
+        public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+            return true;
+        }
+    }
+
+    private final class ListAdapter extends RecyclerView.Adapter<ListAdapter.ViewHolder> implements View.OnClickListener {
+
+        @LayoutRes
+        private final int mLayoutResId = androidx.preference.R.layout.preference_material;
+        private final List<ViewRule> mData = new ArrayList<>();
+
+        public void setData(List<ViewRule> newData) {
+            mData.clear();
+            mData.addAll(newData);
+        }
+
+        public List<ViewRule> getData() {
+            return mData;
         }
 
         @NonNull
         @Override
         public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View itemView = LayoutInflater.from(requireContext()).inflate(mResourceId, parent, false);
+            View itemView = LayoutInflater.from(parent.getContext()).inflate(mLayoutResId, parent, false);
             return new ViewHolder(itemView);
         }
 
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            ViewRule viewRule = viewRules.get(position);
-
-            if (Preconditions.checkBitmap(viewRule.thumbnail)) {
-                holder.mImageView.setImageBitmap(viewRule.thumbnail);
-            }
-            if (viewRule.activityClass != null) {
+            ViewRule viewRule = mData.get(position);
+            Glide.with(ViewRuleListFragment.this).load(viewRule).error(mIcon).diskCacheStrategy(DiskCacheStrategy.NONE).into(holder.imageView);
+            if (viewRule.activityClass != null && viewRule.activityClass.lastIndexOf('.') > -1) {
                 String activityName = viewRule.activityClass.substring(viewRule.activityClass.lastIndexOf('.') + 1);
-                holder.mTitleTextView.setText(getString(R.string.field_activity, activityName));
-            } else {
-                holder.mTitleTextView.setText(getString(R.string.unknown_activity));
+                holder.titleView.setText(getString(R.string.field_activity, activityName));
+                holder.titleView.setSingleLine();
             }
 
             SpannableStringBuilder summaryBuilder = new SpannableStringBuilder();
@@ -164,64 +200,36 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
                 summaryBuilder.append(ss);
             }
             summaryBuilder.append(getString(R.string.field_view, viewRule.viewClass));
-            holder.mSummaryTextView.setText(summaryBuilder);
-
-            setEnabledStateOnViews(holder.itemView, true);
+            holder.summaryView.setText(summaryBuilder);
             holder.itemView.setFocusable(true);
             holder.itemView.setClickable(true);
-            holder.itemView.setOnClickListener(v -> {
-                ViewRuleDetailsContainerFragment fragment = new ViewRuleDetailsContainerFragment();
-                fragment.setCurIndex(position);
-                fragment.setIcon(mIcon);
-                fragment.setLabel(mLabel);
-                fragment.setPackageName(mPackageName);
-                SettingsActivity activity = (SettingsActivity) requireActivity();
-                activity.startPreferenceFragment(fragment);
-            });
-        }
-
-        private void setEnabledStateOnViews(View v, boolean enabled) {
-            v.setEnabled(enabled);
-
-            if (v instanceof ViewGroup) {
-                final ViewGroup vg = (ViewGroup) v;
-                for (int i = vg.getChildCount() - 1; i >= 0; i--) {
-                    setEnabledStateOnViews(vg.getChildAt(i), enabled);
-                }
-            }
+            holder.itemView.setTag(position);
+            holder.itemView.setOnClickListener(this);
         }
 
         @Override
         public int getItemCount() {
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            return viewRules.size();
+            return mData.size();
+        }
+
+        @Override
+        public void onClick(View view) {
+            final int position = (Integer) view.getTag();
+            NavHostFragment.findNavController(ViewRuleListFragment.this).navigate(ViewRuleListFragmentDirections.actionViewRuleListFragmentToViewRuleDetailsContainerFragment(position));
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
 
-            final ImageView mImageView;
-            final TextView mTitleTextView;
-            final TextView mSummaryTextView;
+            final ImageView imageView;
+            final TextView titleView;
+            final TextView summaryView;
 
             public ViewHolder(@NonNull View itemView) {
                 super(itemView);
-                mImageView = itemView.findViewById(android.R.id.icon);
-                mTitleTextView = itemView.findViewById(android.R.id.title);
-                mSummaryTextView = itemView.findViewById(android.R.id.summary);
+                imageView = itemView.findViewById(android.R.id.icon);
+                titleView = itemView.findViewById(android.R.id.title);
+                summaryView = itemView.findViewById(android.R.id.summary);
             }
-
-        }
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-        for (ViewRule viewRule : viewRules) {
-            recycleNullableBitmap(viewRule.snapshot);
-            viewRule.snapshot = null;
-            recycleNullableBitmap(viewRule.thumbnail);
-            viewRule.thumbnail = null;
         }
     }
 
@@ -233,162 +241,25 @@ public final class ViewRuleListFragment extends Fragment implements LoaderManage
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.menu_revoke_rules) {
-            if (!mSharedViewModel.deleteAppRules(mPackageName.toString())) {
-                Snackbar.make(requireActivity(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
+        if (item.getItemId() == R.id.menu_delete_rules) {
+            if (!mSharedViewModel.deleteAppRules(mPackageName)) {
+                Snackbar.make(requireView(), R.string.snack_bar_msg_revert_rule_fail, Snackbar.LENGTH_SHORT).show();
             }
-        } else if (item.getItemId() == R.id.menu_export_rules) {
-            PermissionHelper permissionHelper = new PermissionHelper(requireActivity());
-            if (!permissionHelper.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                permissionHelper.applyPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        } else if (item.getItemId() == R.id.menu_backup_rules) {
+            try {
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HHmmss", Locale.getDefault());
+                PackageManager packageManager = requireContext().getPackageManager();
+                ApplicationInfo applicationInfo = packageManager.getApplicationInfo(mPackageName, 0);
+                String label = applicationInfo.loadLabel(packageManager).toString();
+                String filename = String.format(Locale.getDefault(), "%s_%s.gzip", label, sdf.format(new Date()));
+                mBackupLauncher.launch(filename);
                 return true;
+            } catch (ActivityNotFoundException | PackageManager.NameNotFoundException e) {
+                Snackbar.make(requireView(), R.string.snack_bar_msg_backup_rule_fail, Snackbar.LENGTH_SHORT).show();
+                return false;
             }
-            LoaderManager.getInstance(this).initLoader(EXPORT_TASK_LOADER_ID, null, new LoaderManager.LoaderCallbacks<String>() {
-                @NonNull
-                @Override
-                public Loader<String> onCreateLoader(int id, @Nullable Bundle args) {
-                    return new ExportTaskLoader(requireContext());
-                }
-
-                @Override
-                public void onLoadFinished(@NonNull Loader<String> loader, String filepath) {
-                    Snackbar.make(requireActivity(), FileUtils.exists(filepath)
-                            ? getString(R.string.export_successful, filepath)
-                            : getString(R.string.export_failed), Snackbar.LENGTH_LONG).show();
-                    LoaderManager.getInstance(ViewRuleListFragment.this).destroyLoader(EXPORT_TASK_LOADER_ID);
-                }
-
-                @Override
-                public void onLoaderReset(@NonNull Loader<String> loader) {
-
-                }
-            }).forceLoad();
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public Loader<Boolean> onCreateLoader(int id, Bundle args) {
-        return new ThumbnailLoader(requireContext(), mSharedViewModel);
-    }
-
-    @Override
-    public void onLoadFinished(@NonNull Loader<Boolean> loader, Boolean data) {
-        if (data) {
-            @SuppressWarnings("rawtypes") RecyclerView.Adapter adapter = mRecyclerView.getAdapter();
-            if (adapter != null) adapter.notifyDataSetChanged();
-        }
-    }
-
-    @Override
-    public void onLoaderReset(@NonNull Loader<Boolean> loader) {
-    }
-
-    private static final class ThumbnailLoader extends AsyncTaskLoader<Boolean> {
-
-        private final ProgressDialog mDialog;
-        private final SharedViewModel mSharedViewModel;
-
-        public ThumbnailLoader(Context context, SharedViewModel sharedViewModel) {
-            super(context);
-            mSharedViewModel = sharedViewModel;
-            mDialog = new ProgressDialog(context);
-            mDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            mDialog.setCanceledOnTouchOutside(false);
-            mDialog.setMessage(getContext().getString(R.string.dialog_loading));
-        }
-
-        @Override
-        protected void onStartLoading() {
-            super.onStartLoading();
-            if (takeContentChanged()) {
-                forceLoad();
-                if (mDialog.isShowing()) {
-                    mDialog.dismiss();
-                }
-                mDialog.show();
-            }
-        }
-
-        @Override
-        public Boolean loadInBackground() {
-            GodModeManager gmm = GodModeManager.getDefault();
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            for (ViewRule viewRule : viewRules) {
-                if (viewRule.thumbnail == null && !TextUtils.isEmpty(viewRule.imagePath)) {
-                    try {
-                        ParcelFileDescriptor parcelFileDescriptor = gmm.openImageFileDescriptor(viewRule.imagePath);
-                        Preconditions.checkNotNull(parcelFileDescriptor);
-                        try {
-                            viewRule.snapshot = BitmapFactory.decodeFileDescriptor(parcelFileDescriptor.getFileDescriptor());
-                            viewRule.thumbnail = Bitmap.createBitmap(viewRule.snapshot, viewRule.x, viewRule.y, viewRule.width, viewRule.height);
-                        } finally {
-                            parcelFileDescriptor.close();
-                        }
-                    } catch (Exception e) {
-                        Logger.w(TAG, "load image failed", e);
-                    }
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public void deliverResult(@Nullable Boolean data) {
-            if (mDialog.isShowing()) {
-                mDialog.dismiss();
-            }
-            if (isReset()) {
-                releaseResources();
-            }
-            super.deliverResult(data);
-        }
-
-        private void releaseResources() {
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            for (ViewRule rule : viewRules) {
-                recycleNullableBitmap(rule.snapshot);
-                recycleNullableBitmap(rule.thumbnail);
-            }
-        }
-    }
-
-    private final class ExportTaskLoader extends AsyncTaskLoader<String> {
-
-        private final ProgressDialog dialog;
-
-
-        public ExportTaskLoader(@NonNull Context context) {
-            super(context);
-            dialog = new ProgressDialog(context);
-            dialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-            dialog.setCancelable(false);
-            dialog.setCanceledOnTouchOutside(false);
-            dialog.setMessage(context.getResources().getString(R.string.dialog_message_export));
-        }
-
-        @Override
-        protected void onStartLoading() {
-            super.onStartLoading();
-            if (!dialog.isShowing()) {
-                dialog.show();
-            }
-        }
-
-        @Override
-        public String loadInBackground() {
-            List<ViewRule> viewRules = mSharedViewModel.actRules.getValue();
-            return LocalRepository.exportRules(viewRules.toArray(new ViewRule[0]));
-        }
-
-        @Override
-        public void deliverResult(String filepath) {
-            super.deliverResult(filepath);
-            if (dialog.isShowing()) {
-                dialog.dismiss();
-            }
-        }
-
     }
 
 }

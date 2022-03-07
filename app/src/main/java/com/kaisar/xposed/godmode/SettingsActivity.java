@@ -5,30 +5,30 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
-
-import com.kaisar.xposed.godmode.model.SharedViewModel;
+import androidx.appcompat.widget.Toolbar;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
 
 public class SettingsActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.fragment_container_activity);
-        SharedViewModel sharedViewModel = new ViewModelProvider(this).get(SharedViewModel.class);
-        sharedViewModel.title.observe(this, this::setTitle);
+        setContentView(R.layout.activity_settings);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment);
+        AppBarConfiguration appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
+        Toolbar toolbar = findViewById(R.id.main_toolbar);
+        setSupportActionBar(toolbar);
+        NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration);
         startNotificationService();
     }
-
-    public void startPreferenceFragment(Fragment fragment) {
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container_view, fragment, null)
-                .setReorderingAllowed(true)
-                .addToBackStack(fragment.getClass().getSimpleName())
-                .commit();
-    }
-
 
     private void startNotificationService() {
         Intent notificationService = new Intent(this, NotificationService.class);
