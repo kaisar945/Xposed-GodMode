@@ -94,5 +94,8 @@
     <string name="pref_key_detail_view_visible" translatable="false">view_visibility</string>
     <string name="pref_key_detail_preview_image" translatable="false">preview_image</string>
     <string name="res_inject_success" translatable="false">Resources injection success</string>
+    <string name="fetch_group_list_err1">嘿 伙计 我想这一定是个臭虫</string>
+    <string name="fetch_group_list_err2">噢 糟糕 我想上帝也不知道发生了什么</string>
+    <string name="fetch_group_list_err3">嘿 伙计, 快来看看这是什么%1$s 真是有趣!</string>
 
 </resources>

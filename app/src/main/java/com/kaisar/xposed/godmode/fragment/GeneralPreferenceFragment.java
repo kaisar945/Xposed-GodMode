@@ -40,6 +40,7 @@ import com.kaisar.xposed.godmode.BuildConfig;
 import com.kaisar.xposed.godmode.CrashHandler;
 import com.kaisar.xposed.godmode.GodModeApplication;
 import com.kaisar.xposed.godmode.R;
+import com.kaisar.xposed.godmode.bean.GroupInfo;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.model.SharedViewModel;
 import com.kaisar.xposed.godmode.preference.ProgressPreference;
@@ -48,8 +49,8 @@ import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.util.Clipboard;
 import com.kaisar.xposed.godmode.util.DonateHelper;
 import com.kaisar.xposed.godmode.util.PermissionHelper;
-import com.kaisar.xposed.godmode.util.Preconditions;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -269,44 +270,52 @@ public final class GeneralPreferenceFragment extends PreferenceFragmentCompat im
         progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
         progressDialog.setMessage(getText(R.string.dialog_message_query_community));
         progressDialog.show();
-        mSharedViewModel.getGroupInfo(new Callback<Map<String, String>[]>() {
+        mSharedViewModel.getGroupInfo(new Callback<List<GroupInfo>>() {
             @Override
-            public void onResponse(@NonNull Call<Map<String, String>[]> call, @NonNull Response<Map<String, String>[]> response) {
+            public void onResponse(@NonNull Call<List<GroupInfo>> call, @NonNull Response<List<GroupInfo>> response) {
                 if (progressDialog.isShowing()) {
                     progressDialog.dismiss();
                 }
-                try {
-                    if (!response.isSuccessful()) throw new Exception("not successful");
-                    Map<String, String>[] body = Preconditions.checkNotNull(response.body());
-                    final int N = body.length;
-                    String[] names = new String[N];
-                    String[] links = new String[N];
-                    for (int i = 0; i < N; i++) {
-                        Map<String, String> map = body[i];
-                        names[i] = map.get("group_name");
-                        links[i] = map.get("group_link");
+                if (response.isSuccessful()) {
+                    List<GroupInfo> groupInfoList = response.body();
+                    if (groupInfoList != null && !groupInfoList.isEmpty()) {
+                        final int N = groupInfoList.size();
+                        String[] names = new String[N];
+                        String[] links = new String[N];
+                        for (int i = 0; i < N; i++) {
+                            GroupInfo groupInfo = groupInfoList.get(i);
+                            names[i] = groupInfo.group_name;
+                            links[i] = groupInfo.group_link;
+                        }
+                        new AlertDialog.Builder(requireContext())
+                                .setItems(names, (dialog, which) -> {
+                                    try {
+                                        Intent intent = new Intent(Intent.ACTION_VIEW);
+                                        intent.setData(Uri.parse(links[which]));
+                                        startActivity(intent);
+                                    } catch (Exception ignore) {
+                                    }
+                                }).show();
+                    } else {
+                        Snackbar.make(requireView(), R.string.fetch_group_list_err1, Snackbar.LENGTH_LONG).show();
                     }
-                    new AlertDialog.Builder(requireContext())
-                            .setItems(names, (dialog, which) -> {
-                                try {
-                                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                                    intent.setData(Uri.parse(links[which]));
-                                    startActivity(intent);
-                                } catch (Exception ignore) {
-                                }
-                            }).show();
-                } catch (Exception e) {
-                    Toast.makeText(requireContext(), "获取群组信息失败:" + response.code(), Toast.LENGTH_LONG).show();
+                } else {
+                    if (response.errorBody() == null) {
+                        Snackbar.make(requireView(), R.string.fetch_group_list_err2, Snackbar.LENGTH_LONG).show();
+                    } else {
+                        Snackbar.make(requireView(), getString(R.string.fetch_group_list_err3, response.errorBody().toString()), Snackbar.LENGTH_LONG).show();
+                    }
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<Map<String, String>[]> call, @NonNull Throwable t) {
+            public void onFailure(@NonNull Call<List<GroupInfo>> call, @NonNull Throwable t) {
                 if (progressDialog.isShowing()) {
                     progressDialog.dismiss();
                 }
-                Toast.makeText(requireContext(), "获取群组信息失败" + t.getMessage(), Toast.LENGTH_LONG).show();
+                Snackbar.make(requireView(), getString(R.string.fetch_group_list_err3, t.getMessage()), Snackbar.LENGTH_LONG).show();
             }
+
         });
     }
 

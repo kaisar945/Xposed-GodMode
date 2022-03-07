@@ -12,6 +12,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.kaisar.xposed.godmode.IObserver;
+import com.kaisar.xposed.godmode.bean.GroupInfo;
 import com.kaisar.xposed.godmode.injection.bridge.GodModeManager;
 import com.kaisar.xposed.godmode.repository.LocalRepository;
 import com.kaisar.xposed.godmode.repository.RemoteRepository;
@@ -57,7 +58,7 @@ public class SharedViewModel extends ViewModel {
         mExecutor.execute(() -> appRules.postValue(LocalRepository.loadAppRules()));
     }
 
-    public void getGroupInfo(Callback<Map<String, String>[]> cb) {
+    public void getGroupInfo(Callback<List<GroupInfo>> cb) {
         RemoteRepository.fetchGroupInfo(cb);
     }
 

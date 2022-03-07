@@ -60,4 +60,7 @@
     <string name="block_fail">Failed to block:%1$s</string>
     <string name="dialog_message_query_community">Loading community info...</string>
     <string name="accessibility_block">Block</string>
+    <string name="fetch_group_list_err1">Error: group list is empty</string>
+    <string name="fetch_group_list_err2">Error: unknown exception</string>
+    <string name="fetch_group_list_err3">Error: %1$s</string>
 </resources>
