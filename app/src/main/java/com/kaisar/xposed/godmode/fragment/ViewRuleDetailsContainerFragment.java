@@ -92,8 +92,10 @@ public final class ViewRuleDetailsContainerFragment extends PreferenceFragmentCo
 
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        DetailFragmentStateAdapter detailFragmentStateAdapter= new DetailFragmentStateAdapter(this);
+        detailFragmentStateAdapter.setData(mSharedViewModel.actRules.getValue());
         mViewPager = (ViewPager2) inflater.inflate(R.layout.fragment_rule_details_container, container, false);
-        mViewPager.setAdapter(new DetailFragmentStateAdapter(this));
+        mViewPager.setAdapter(detailFragmentStateAdapter);
         mViewPager.registerOnPageChangeCallback(mCallback);
         mViewPager.setCurrentItem(mCurIndex);
         return mViewPager;
