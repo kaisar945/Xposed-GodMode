@@ -38,7 +38,7 @@ public final class NotificationService extends Service implements SharedPreferen
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         boolean enable = isEditMode();
-        if (TextUtils.equals(intent.getAction(), Intent.ACTION_EDIT)) {
+        if (intent != null && TextUtils.equals(intent.getAction(), Intent.ACTION_EDIT)) {
             if (!GodModeManager.getDefault().hasLight()) {
                 Toast.makeText(this, R.string.not_active_module, Toast.LENGTH_SHORT).show();
                 return super.onStartCommand(intent, flags, startId);
