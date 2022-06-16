@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GodMode</string>
-    <string name="pref_header_general">General</string>
-    <string name="pref_header_support">Support</string>
-    <string name="pref_header_app_rules">App Rules</string>
+    <string name="pref_header_general">GENERAL</string>
+    <string name="pref_header_support">SUPPORT</string>
+    <string name="pref_header_app_rules">APP RULES</string>
     <string name="pref_title_god_mode">GodMode</string>
     <string name="snack_bar_msg_revert_rule_fail">Revoke rule failed</string>
     <string name="snack_bar_msg_backup_rule_fail">Oops, backup rules failed.</string>
