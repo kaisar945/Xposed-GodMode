@@ -52,6 +52,10 @@ public final class NotificationService extends Service implements SharedPreferen
 
     private void createControlChannel() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            Notification notification = new Notification.Builder(this, "NotificationService").getNotification();
+            notification.flags |= Notification.FLAG_NO_CLEAR;
+            startForeground(1, notification);
+
             NotificationChannel channel = new NotificationChannel(TAG, "Control panel", NotificationManager.IMPORTANCE_DEFAULT);
             channel.setDescription("Let there be light");
             NotificationManager nm = getSystemService(NotificationManager.class);
