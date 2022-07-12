@@ -139,4 +139,14 @@ public final class GodModeManager {
             return null;
         }
     }
+
+    // TODO: 删除规则目录
+    public boolean clearBaseServerDir() {
+        try {
+            return mGMM.clearBaseServerDir();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
