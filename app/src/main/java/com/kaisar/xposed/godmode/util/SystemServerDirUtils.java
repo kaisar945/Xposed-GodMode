@@ -11,7 +11,7 @@ import java.util.Random;
 
 /**
  * Created by fkj on 22-7-12.
- * 系统服务获取目录工具类
+ * System service get directory tool class
  */
 
 public class SystemServerDirUtils {
@@ -70,27 +70,27 @@ public class SystemServerDirUtils {
     }
 
     /**
-     * 生成16位不重复的随机数，含数字+大小写
+     * Generate a 16 bit non repeating random number, including number + Case
      * @author https://blog.csdn.net/bingguang1993/article/details/103372383
      */
     private String getGUID() {
         StringBuilder uid = new StringBuilder();
-        //产生16位的强随机数
+        // Generate 16 bit strong random numbers
         Random rd = new SecureRandom();
         for (int i = 0; i < 16;) {
-            //产生0-2的3位随机数
+            // Generate a 3-bit random number of 0-2
             int type = rd.nextInt(3);
             switch (type){
                 case 0:
-                    //0-9的随机数
+                    // Random number of 0-9
                     uid.append(rd.nextInt(10));
                     break;
                 case 1:
-                    //ASCII在65-90之间为大写,获取大写随机
+                    // ASCII is uppercase between 65-90, get uppercase random
                     uid.append((char)(rd.nextInt(25)+65));
                     break;
                 case 2:
-                    //ASCII在97-122之间为小写，获取小写随机
+                    // ASCII is lowercase between 97-122, get lowercase random
                     uid.append((char)(rd.nextInt(25)+97));
                     break;
                 default:

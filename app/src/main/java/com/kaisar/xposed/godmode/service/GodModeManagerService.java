@@ -134,8 +134,9 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     @Override
-    public boolean clearBaseServerDir() {
-        return mSystemServerDirUtils.baseServerDir().delete();
+    public boolean clearBaseServerDir() throws RemoteException {
+        enforcePermission("clear base server dir fail permission denied");
+        return FileUtils.delete(mSystemServerDirUtils.baseServerDir());
     }
 
     @Override
