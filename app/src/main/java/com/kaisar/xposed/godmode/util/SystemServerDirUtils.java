@@ -6,7 +6,10 @@ import android.os.Environment;
 import com.kaisar.xposed.godmode.injection.util.Logger;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -18,6 +21,7 @@ public class SystemServerDirUtils {
     private static final String BASE_SERVER_DIR_NAME = "godmode";
     private final int BASE_SERVER_DIR_NAME_LENGTH = BASE_SERVER_DIR_NAME.length() + getGUID().length() + 1;
     private static File server_dir = null;
+    private final String OLD_FILE_NAME = "godmode";
 
     private final Logger mLogger;
 
@@ -63,6 +67,14 @@ public class SystemServerDirUtils {
             if (file.getName().startsWith(BASE_SERVER_DIR_NAME) && file.getName().length() == BASE_SERVER_DIR_NAME_LENGTH) {
                 mLogger.i("Found base server dir: " + file.getAbsolutePath());
                 return file;
+            }
+            if (file.getName().equals(OLD_FILE_NAME)) {
+                mLogger.i("Found old base server dir: " + file.getAbsolutePath());
+                File newFile = randomBaseServerDir();
+                if (!file.renameTo(newFile)) {
+                    mLogger.i("Rename to new name failed. Old path: " + file.getAbsolutePath() + " new path: " + newFile.getAbsolutePath());
+                }
+                return newFile;
             }
         }
         mLogger.i("No base server dir found");
