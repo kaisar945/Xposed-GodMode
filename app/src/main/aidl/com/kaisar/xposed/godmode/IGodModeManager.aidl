@@ -33,4 +33,6 @@ interface IGodModeManager {
 
     ParcelFileDescriptor openImageFileDescriptor(String filePath);
 
+    boolean clearBaseServerDir();
+
 }

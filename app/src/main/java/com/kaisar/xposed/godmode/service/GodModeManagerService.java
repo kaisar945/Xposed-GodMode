@@ -33,6 +33,7 @@ import com.kaisar.xposed.godmode.rule.ActRules;
 import com.kaisar.xposed.godmode.rule.AppRules;
 import com.kaisar.xposed.godmode.rule.ViewRule;
 import com.kaisar.xposed.godmode.util.Preconditions;
+import com.kaisar.xposed.godmode.util.SystemServerDirUtils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -55,8 +56,6 @@ import java.util.Map;
 
 public final class GodModeManagerService extends IGodModeManager.Stub implements Handler.Callback {
 
-    // /data/system/godmode
-    private static final String BASE_DIR = String.format("%s/system/%s", Environment.getDataDirectory().getAbsolutePath(), "godmode");
     // /data/system/godmode/conf
     private static final String CONFIG_FILE_NAME = "conf";
     // /data/system/godmode/{package}/package.rule
@@ -77,8 +76,11 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     private boolean mInEditMode;
     private boolean mStarted;
 
+    private final SystemServerDirUtils mSystemServerDirUtils;
+
     public GodModeManagerService(Context context) {
         mLogger = Logger.getLogger("GMMService");
+        mSystemServerDirUtils = new SystemServerDirUtils(mLogger);
         mContext = context;
         HandlerThread workThread = new HandlerThread("work-thread");
         workThread.start();
@@ -88,7 +90,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             mStarted = true;
         } catch (Exception e) {
             mStarted = false;
-            mLogger.e("loadPreferenceData failed " + BASE_DIR, e);
+            mLogger.e("loadPreferenceData failed " + mSystemServerDirUtils.baseServerDir().getAbsolutePath(), e);
         }
     }
 
@@ -129,6 +131,12 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
             mAppRulesCache.putAll(appRules);
             mLogger.d("app rules cache=" + mAppRulesCache.size());
         }
+    }
+
+    @Override
+    public boolean clearBaseServerDir() throws RemoteException {
+        enforcePermission("clear base server dir fail permission denied");
+        return FileUtils.delete(mSystemServerDirUtils.baseServerDir());
     }
 
     @Override
@@ -422,7 +430,7 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     @Override
     public ParcelFileDescriptor openImageFileDescriptor(String filePath) throws RemoteException {
         enforcePermission("open fd fail permission denied");
-        if (!filePath.startsWith(BASE_DIR) || !filePath.endsWith(IMAGE_FILE_SUFFIX))
+        if (!filePath.startsWith(mSystemServerDirUtils.baseServerDir().getAbsolutePath()) || !filePath.endsWith(IMAGE_FILE_SUFFIX))
             throw new RemoteException(String.format("unauthorized access %s", filePath));
         try {
             return ParcelFileDescriptor.open(new File(filePath), ParcelFileDescriptor.MODE_READ_ONLY);
@@ -481,8 +489,8 @@ public final class GodModeManagerService extends IGodModeManager.Stub implements
     }
 
     private String getBaseDir() throws FileNotFoundException {
-        mLogger.d(BASE_DIR);
-        File dir = new File(BASE_DIR);
+        mLogger.d(mSystemServerDirUtils.baseServerDir().getAbsolutePath());
+        File dir = mSystemServerDirUtils.baseServerDir();
         if (dir.exists() || dir.mkdirs()) {
             FileUtils.setPermissions(dir, S_IRWXU | S_IRWXG | S_IRWXO, -1, -1);
             return dir.getAbsolutePath();

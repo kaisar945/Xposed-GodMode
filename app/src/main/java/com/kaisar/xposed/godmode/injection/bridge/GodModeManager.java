@@ -139,4 +139,13 @@ public final class GodModeManager {
             return null;
         }
     }
+
+    public boolean clearBaseServerDir() {
+        try {
+            return mGMM.clearBaseServerDir();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
